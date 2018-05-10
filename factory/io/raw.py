@@ -1,3 +1,5 @@
+"""Copyright (C) 2018 Vidrio Technologies. All rights reserved."""
+
 import numpy as np
 
 SPIKE_LIMIT = 25000

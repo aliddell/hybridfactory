@@ -1,3 +1,5 @@
+"""Copyright (C) 2018 Vidrio Technologies. All rights reserved."""
+
 import os.path as op
 
 import numpy as np
@@ -9,13 +11,13 @@ def save_gt_units(dirname, gt_channels, gt_times, gt_labels):
     Parameters
     ----------
     dirname : str
-    gt_channels :
-    gt_times :
-    gt_labels :
+    gt_channels : iterable
+    gt_times : iterable
+    gt_labels : iterable
 
     Returns
     -------
-
+    filename : str
     """
 
     counts = [c.size for c in gt_channels]
@@ -36,4 +38,8 @@ def save_gt_units(dirname, gt_channels, gt_times, gt_labels):
     firings_true[1, :] = times[ordering]
     firings_true[2, :] = labels[ordering]
 
-    np.save(op.join(dirname, "firings_true.npy"), firings_true)
+    filename = op.join(dirname, "firings_true.npy")
+
+    np.save(filename, firings_true)
+
+    return filename

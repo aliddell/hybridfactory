@@ -1,3 +1,5 @@
+"""Copyright (C) 2018 Vidrio Technologies. All rights reserved."""
+
 import os.path as op
 
 import numpy as np

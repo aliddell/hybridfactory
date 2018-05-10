@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+"""Copyright (C) 2018 Vidrio Technologies. All rights reserved."""
+
 import argparse
 import importlib
 import os.path as op
@@ -11,6 +13,9 @@ import scipy.spatial
 
 import factory.io.raw
 import factory.io.gt
+
+__author__ = "Alan Liddell <alan@vidriotech.com>"
+__version__ = "0.1.0-alpha"
 
 
 def _err_exit(msg, status=1):
@@ -25,7 +30,7 @@ def _log(msg, stdout, in_progress=False):
         print(msg, end=end)
 
 
-def _user_dialog(msg, options=["y", "n"], default_option="n"):
+def _user_dialog(msg, options=("y", "n"), default_option="n"):
     default_option = default_option.lower()
     options = [o.lower() for o in options]
     assert default_option in options
@@ -37,11 +42,11 @@ def _user_dialog(msg, options=["y", "n"], default_option="n"):
     choice = input(f"[{'/'.join(options)}] ").strip().lower()
 
     iters = 0
-    while choice and choice not in list(map(lambda x : x.lower(), options)) and iters < 3:
+    while choice and choice not in list(map(lambda x: x.lower(), options)) and iters < 3:
         iters += 1
         choice = input(f"[{'/'.join(options)}] ").strip().lower()
 
-    if not choice or choice not in list(map(lambda x : x.lower(), options)):
+    if not choice or choice not in list(map(lambda x: x.lower(), options)):
         choice = default_option
 
     return choice
@@ -62,7 +67,7 @@ def create_config(args):
     pass
 
 
-def load_params(config):
+def load_params_probe(config):
     """
 
     Parameters
@@ -75,34 +80,38 @@ def load_params(config):
     probe : module
     """
 
+    params = None
+
     try:
         params = importlib.import_module(config)  # load parameter file as a module
     except ModuleNotFoundError:
         _err_exit(f"config file '{config}' not found")
     except SyntaxError:
         _err_exit(f"bad syntax in config file '{config}'")
+    finally:
+        assert params is not None
 
-    required_params = {"raw_source_file"    : None,
-                       "raw_target_file"    : None,
-                       "data_type"          : [np.int16],
-                       "sample_rate"        : None,
-                       "output_type"        : ["kilosort", "phy"],
-                       "data_directory"     : None,
-                       "probe_type"         : ["npix3a", "eMouse"],
-                       "ground_truth_units" : None}
+    required_params = {"raw_source_file": None,
+                       "raw_target_file": None,
+                       "data_type": [np.int16],
+                       "sample_rate": None,
+                       "output_type": ["kilosort", "phy"],
+                       "data_directory": None,
+                       "probe_type": ["npix3a", "eMouse"],
+                       "ground_truth_units": None}
 
-    optional_params = {"random_seed"        : None,
-                       "generator_type"     : ["steinmetz"],
+    optional_params = {"random_seed": None,
+                       "generator_type": ["steinmetz"],
                        "num_singular_values": 6,
-                       "channel_shift"      : None,  # depends on probe
-                       "time_jitter"        : 50,
-                       "samples_before"     : 40,
-                       "samples_after"      : 40,
-                       "event_threshold"    : -30,
-                       "offset"             : 0,
-                       "extra_channels"     : 0,
-                       "copy"               : False,
-                       "overwrite"          : False}
+                       "channel_shift": None,  # depends on probe
+                       "time_jitter": 50,
+                       "samples_before": 40,
+                       "samples_after": 40,
+                       "event_threshold": -30,
+                       "offset": 0,
+                       "extra_channels": 0,
+                       "copy": False,
+                       "overwrite": False}
 
     for param in required_params:
         if not hasattr(params, param):
@@ -152,12 +161,13 @@ def copy_source_target(params, probe):
 
     Parameters
     ----------
-    params :
-    probe :
+    params : module
+    probe : module
 
     Returns
     -------
-
+    source : numpy.memmap
+    target : numpy.memmap
     """
 
     if op.isfile(params.raw_target_file) and not params.overwrite:
@@ -194,16 +204,16 @@ def construct_artificial_events(source, params, probe, unit_times):
     source : numpy.memmap
     params : module
     probe : module
-    event_times : numpy.ndarray
-    event_clusters : numpy.ndarray
-    unit_id : int
+    unit_times : numpy.ndarray
 
     Returns
     -------
-
+    art_events : numpy.ndarray
+    channels : numpy.ndarray
     """
 
-    generator = importlib.import_module(f"factory.generators.{params.generator_type}")  # e.g., factory.generators.steinmetz
+    # e.g., factory.generators.steinmetz
+    generator = importlib.import_module(f"factory.generators.{params.generator_type}")
     art_events, channels = generator.generate(source, params, probe, unit_times)
 
     return art_events, channels
@@ -220,7 +230,7 @@ def shift_channels(channels, params, probe):
 
     Returns
     -------
-
+    shifted_channels : numpy.ndarray
     """
 
     # inverse_channel_map[probe.channel_map] == [1, 2, ..., probe.channel_map.size - 1]
@@ -247,9 +257,11 @@ def shift_channels(channels, params, probe):
         return None
 
     # make sure our shifted channels don't alter spatial relationships
+    channel_distance = scipy.spatial.distance.pdist(probe.channel_positions[inverse_channel_map[channels], :])
+    shifted_distance = scipy.spatial.distance.pdist(probe.channel_positions[inverse_channel_map[shifted_channels], :])
+
     try:
-        assert np.isclose(scipy.spatial.distance.pdist(probe.channel_positions[inverse_channel_map[channels], :]),
-                          scipy.spatial.distance.pdist(probe.channel_positions[inverse_channel_map[shifted_channels], :])).all()
+        assert np.isclose(channel_distance, shifted_distance).all()
     except AssertionError:
         _log(f"channel shift of {params.channel_shift} alters spatial relationship between channels", params.verbose)
         return None
@@ -258,7 +270,6 @@ def shift_channels(channels, params, probe):
 
 
 def jitter_events(unit_times, params):
-
     isi_samples = params.sample_rate // 1000  # number of samples in 1 ms
     # normally-distributed jitter factor, with an absmin of `isi_samples`
     jitter1 = isi_samples + np.abs(np.random.normal(loc=0, scale=params.time_jitter // 2, size=unit_times.size // 2))
@@ -299,8 +310,8 @@ def generate_hybrid(args):
     if config_dir not in sys.path:
         sys.path.insert(0, config_dir)
 
-    params, probe = load_params(config)
-    params.verbose = args.verbose
+    params, probe = load_params_probe(config)
+    params.verbose = not args.silent
 
     np.random.seed(params.random_seed)
 
@@ -368,7 +379,11 @@ def generate_hybrid(args):
     # finished writing, flush to file
     del source, target
 
-    factory.io.gt.save_gt_units(".", gt_channels, gt_times, gt_labels)
+    # save ground-truth units for validation
+    dirname = op.dirname(params.raw_target_file)
+    filename = factory.io.gt.save_gt_units(dirname, gt_channels, gt_times, gt_labels)
+
+    _log(f"Firing times and labels saved to {filename}.", params.verbose)
 
 
 def main():
@@ -386,7 +401,7 @@ def main():
     cmd_generate = subparsers.add_parser("generate", description="generate some hybrid data")
     cmd_generate.add_argument("config", type=str, nargs='?', default="params.py",
                               help="path to a config file with Python syntax (default: params.py)")
-    cmd_generate.add_argument("--verbose", default=False, action="store_true")
+    cmd_generate.add_argument("--silent", default=False, action="store_true")
     cmd_generate.set_defaults(func=generate_hybrid)
 
     args = parser.parse_args()
@@ -394,4 +409,16 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    # noinspection PyBroadException
+    try:
+        main()
+    except Exception as e:
+        err_msg = f"""A wild BUG appeared!
+        
+Please send the following output to {__author__}:
+
+Version:
+    {__version__}
+Error:
+    {str(e)}"""
+        _err_exit(err_msg)
