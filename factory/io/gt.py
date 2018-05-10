@@ -11,13 +11,18 @@ def save_gt_units(dirname, gt_channels, gt_times, gt_labels):
     Parameters
     ----------
     dirname : str
+        Path to directory in which to save units.
     gt_channels : iterable
+        List of numpy.ndarray, central channels on which events occur.
     gt_times : iterable
+        List of numpy.ndarray, sample times at which events occur.
     gt_labels : iterable
+        List of int, unique cluster labels of units.
 
     Returns
     -------
     filename : str
+        Path to file in which data is saved.
     """
 
     counts = [c.size for c in gt_channels]
@@ -43,3 +48,23 @@ def save_gt_units(dirname, gt_channels, gt_times, gt_labels):
     np.save(filename, firings_true)
 
     return filename
+
+
+def load_gt_units(dirname):
+    """
+
+    Parameters
+    ----------
+    dirname : str
+        Path to directory containing file to load.
+
+    Returns
+    -------
+    firings_true : numpy.ndarray
+        Matrix of firing times, channels, and labels for ground-truth units.
+    """
+
+    filename = op.join(dirname, "firings_true.npy")
+    assert op.isfile(filename)
+
+    return np.load(filename)
