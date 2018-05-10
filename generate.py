@@ -18,6 +18,8 @@ import factory.io.gt
 __author__ = "Alan Liddell <alan@vidriotech.com>"
 __version__ = "0.1.0-alpha"
 
+SPIKE_LIMIT = 25000
+
 
 def _err_exit(msg, status=1):
     print(msg, file=sys.stderr)
@@ -117,7 +119,7 @@ def create_config(args):
         Command-line arguments pertaining to this session.
     """
 
-    pass
+    _err_exit("This hasn't been implemented yet.", 0)
 
 
 def load_params_probe(config):
@@ -333,6 +335,7 @@ def jitter_events(unit_times, params):
     jittered_times : numpy.ndarray
         Jittered firing times for artificial events.
     """
+
     isi_samples = params.sample_rate // 1000  # number of samples in 1 ms
     # normally-distributed jitter factor, with an absmin of `isi_samples`
     jitter1 = isi_samples + np.abs(np.random.normal(loc=0, scale=params.time_jitter // 2, size=unit_times.size // 2))
@@ -389,6 +392,9 @@ def generate_hybrid(args):
 
     for unit_id in params.ground_truth_units:
         unit_times = event_times[event_clusters == unit_id]
+
+        if unit_times.size > SPIKE_LIMIT:
+            unit_times = np.random.choice(unit_times, size=SPIKE_LIMIT, replace=False)
 
         # generate artificial events for this unit
         _log(f"Generating ground truth for unit {unit_id}", params.verbose, in_progress=True)
