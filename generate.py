@@ -3,6 +3,7 @@
 """Copyright (C) 2018 Vidrio Technologies. All rights reserved."""
 
 import argparse
+import datetime
 import importlib
 import os.path as op
 import shutil
@@ -52,45 +53,7 @@ def _user_dialog(msg, options=("y", "n"), default_option="n"):
     return choice
 
 
-def create_config(args):
-    """
-
-    Parameters
-    ----------
-    args : argparse.Namespace
-
-    Returns
-    -------
-
-    """
-
-    pass
-
-
-def load_params_probe(config):
-    """
-
-    Parameters
-    ----------
-    config : str
-
-    Returns
-    -------
-    params : module
-    probe : module
-    """
-
-    params = None
-
-    try:
-        params = importlib.import_module(config)  # load parameter file as a module
-    except ModuleNotFoundError:
-        _err_exit(f"config file '{config}' not found")
-    except SyntaxError:
-        _err_exit(f"bad syntax in config file '{config}'")
-    finally:
-        assert params is not None
-
+def _legal_params():
     required_params = {"raw_source_file": None,
                        "raw_target_file": None,
                        "data_type": [np.int16],
@@ -112,6 +75,78 @@ def load_params_probe(config):
                        "extra_channels": 0,
                        "copy": False,
                        "overwrite": False}
+
+    return required_params, optional_params
+
+
+def _write_param(fh, param, param_val):
+    if param == "data_type":
+        if param_val == np.int16:  # no other data types supported yet
+            param_val = "np.int16"
+    elif isinstance(param_val, str):  # enclose string in quotes
+        param_val = f'r"{param_val}"'
+    elif param_val is None:
+        return
+
+    print(f"{param} = {param_val}", file=fh)
+
+
+def _write_config(filename, params):
+    required_params, optional_params = _legal_params()
+
+    with open(filename, "w") as fh:
+        print("import numpy as np\n", file=fh)
+
+        print("# required parameters\n", file=fh)
+        for param in required_params:
+            _write_param(fh, param, params.__dict__[param])
+
+        print("\n# optional parameters\n", file=fh)
+        for param in optional_params:
+            _write_param(fh, param, params.__dict__[param])
+
+        print(f"# automatically generated on {datetime.datetime.now()}", file=fh)
+
+
+def create_config(args):
+    """
+
+    Parameters
+    ----------
+    args : argparse.Namespace
+        Command-line arguments pertaining to this session.
+    """
+
+    pass
+
+
+def load_params_probe(config):
+    """
+
+    Parameters
+    ----------
+    config : str
+
+    Returns
+    -------
+    params : module
+        Session parameters.
+    probe : module
+        Probe parameters.
+    """
+
+    params = None
+
+    try:
+        params = importlib.import_module(config)  # load parameter file as a module
+    except ModuleNotFoundError:
+        _err_exit(f"config file '{config}' not found")
+    except SyntaxError:
+        _err_exit(f"bad syntax in config file '{config}'")
+    finally:
+        assert params is not None
+
+    required_params, optional_params = _legal_params()
 
     for param in required_params:
         if not hasattr(params, param):
@@ -162,12 +197,16 @@ def copy_source_target(params, probe):
     Parameters
     ----------
     params : module
+        Session parameters.
     probe : module
+        Probe parameters.
 
     Returns
     -------
     source : numpy.memmap
+        Memory map of source data file.
     target : numpy.memmap
+        Memory map of target data file.
     """
 
     if op.isfile(params.raw_target_file) and not params.overwrite:
@@ -202,14 +241,20 @@ def construct_artificial_events(source, params, probe, unit_times):
     Parameters
     ----------
     source : numpy.memmap
+        Memory map of data file.
     params : module
+        Session parameters.
     probe : module
+        Probe parameters.
     unit_times : numpy.ndarray
+        Array of firing times for this unit.
 
     Returns
     -------
     art_events : numpy.ndarray
+        Tensor, num_channels x num_samples x num_events, constructed by `generator`.
     channels : numpy.ndarray
+        Channels on which the original events occur.
     """
 
     # e.g., factory.generators.steinmetz
@@ -225,12 +270,16 @@ def shift_channels(channels, params, probe):
     Parameters
     ----------
     channels : numpy.ndarray
+        Input channels to be shifted.
     params : module
+        Session parameters.
     probe : module
+        Probe parameters.
 
     Returns
     -------
-    shifted_channels : numpy.ndarray
+    shifted_channels : numpy.ndarray or None
+        Channels shifted by some constant factor.
     """
 
     # inverse_channel_map[probe.channel_map] == [1, 2, ..., probe.channel_map.size - 1]
@@ -270,6 +319,20 @@ def shift_channels(channels, params, probe):
 
 
 def jitter_events(unit_times, params):
+    """
+
+    Parameters
+    ----------
+    unit_times : numpy.ndarray
+        Firing times for this unit, to be jittered.
+    params : module
+        Session parameters.
+
+    Returns
+    -------
+    jittered_times : numpy.ndarray
+        Jittered firing times for artificial events.
+    """
     isi_samples = params.sample_rate // 1000  # number of samples in 1 ms
     # normally-distributed jitter factor, with an absmin of `isi_samples`
     jitter1 = isi_samples + np.abs(np.random.normal(loc=0, scale=params.time_jitter // 2, size=unit_times.size // 2))
@@ -298,10 +361,7 @@ def generate_hybrid(args):
     Parameters
     ----------
     args : argparse.Namespace
-
-    Returns
-    -------
-
+        Command-line arguments pertaining to this session.
     """
 
     config_dir = op.dirname(args.config)
@@ -379,11 +439,17 @@ def generate_hybrid(args):
     # finished writing, flush to file
     del source, target
 
-    # save ground-truth units for validation
     dirname = op.dirname(params.raw_target_file)
-    filename = factory.io.gt.save_gt_units(dirname, gt_channels, gt_times, gt_labels)
 
+    # save ground-truth units for validation
+    filename = factory.io.gt.save_gt_units(dirname, gt_channels, gt_times, gt_labels)
     _log(f"Firing times and labels saved to {filename}.", params.verbose)
+
+    # save parameter file for later reuse
+    timestamp = int(datetime.datetime.now().timestamp())
+    filename = op.join(dirname, f"params-{timestamp}.py")
+    _write_config(filename, params)
+    _log(f"Parameter file to recreate this run saved at {filename}.", params.verbose)
 
 
 def main():
