@@ -13,8 +13,9 @@ def _read_npy(filename, shift=False, flatten=True):
     filename : str
         Path to file to load.
     shift : bool, optional
-        Subtract 1 from values to account for 1-based indexing by Matlab.
+        Subtract 1 from values to account for 1-based indexing by MATLAB.
     flatten : bool, optional
+        Convert to 1d array.
 
     Returns
     -------

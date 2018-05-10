@@ -74,7 +74,7 @@ def _legal_params():
                        "samples_after": 40,
                        "event_threshold": -30,
                        "offset": 0,
-                       "extra_channels": 0,
+                       "sync_channel": False,
                        "copy": False,
                        "overwrite": False}
 
@@ -181,13 +181,13 @@ def load_params_probe(config):
 
         if param not in ("generator_type", "overwrite") and not isinstance(param_val, int):
             _err_exit(f"parameter '{param}' must be an integer")
-        elif param == "overwrite" and not isinstance(param_val, bool):
-            _err_exit(f"legal values for parameter 'overwrite' are: True, False")
+        elif param in ("overwrite", "sync_channel") and not isinstance(param_val, bool):
+            _err_exit(f"legal values for {param} are: True, False")
         elif param in ("samples_before", "samples_after", "time_jitter") and param_val <= 0:
             _err_exit(f"{param} must be a positive integer")
         elif param == "event_threshold" and param_val >= 0:
             _err_exit("event_threshold must be a negative integer")
-        elif param in ("random_seed", "channel_shift", "offset", "extra_channels") and param_val < 0:
+        elif param in ("random_seed", "channel_shift", "offset") and param_val < 0:
             _err_exit(f"{param} must be a nonnegative integer")
 
     return params, probe
@@ -224,7 +224,7 @@ def copy_source_target(params, probe):
 
     file_size_bytes = op.getsize(params.raw_source_file)
     byte_count = np.dtype(params.data_type).itemsize  # number of bytes in data type
-    nrows = probe.NCHANS + params.extra_channels
+    nrows = probe.NCHANS + int(params.sync_channel)
     ncols = file_size_bytes // (nrows * byte_count)
 
     params.num_samples = ncols

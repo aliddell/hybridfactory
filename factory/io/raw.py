@@ -60,7 +60,7 @@ def unit_windows(source, unit_times, samples_before, samples_after, channels=Non
     source : numpy.memmap
         Memory map of source data file.
     unit_times : numpy.ndarray
-        Time steps around which
+        Time steps around which to read samples.
     samples_before : int
         Number of samples before each unit time to read.
     samples_after : int
