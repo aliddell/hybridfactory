@@ -31,6 +31,10 @@ num_singular_values = 6
 channel_shift = 4
 # standard deviation of time jitter
 time_jitter = 500
+# minimum amplitude scale factor
+amplitude_scale_min = 0.75
+# maximum_amplitude_scale_factor
+amplitude_scale_max = 2.
 # number of samples to take before an event timestep
 samples_before = 30
 # number of samples to take after an event timestep
@@ -39,9 +43,6 @@ samples_after = 30
 event_threshold = -30
 # point in the raw file at which the data starts
 offset = 0
-# whether or not this file contains a sync channel
-# (see https://github.com/cortex-lab/neuropixels/wiki/Other_analysis_methods#loading-synchronization-data)
-sync_channel = False
 # whether or not to copy the source to the target; if not sure, you probably want True
 copy = True
 # whether or not to overwrite a target file if it already exists
