@@ -23,6 +23,8 @@ def generate(source, params, probe, unit_times):
     -------
     recon_events : numpy.ndarray
         Tensor, num_channels x num_samples x num_events.
+    channels : numpy.ndarray
+        Channels on which generated events occur.
     """
     windows = factory.io.raw.unit_windows(source, unit_times, params.samples_before, params.samples_after)
     windows[probe.channel_map[~probe.connected], :, :] = 0  # zero out the unconnected channels
