@@ -16,6 +16,7 @@ import factory.io.raw
 import factory.io.gt
 import factory.generate.shift
 import factory.generate.generators
+from factory.io.logging import log
 
 __author__ = "Alan Liddell <alan@vidriotech.com>"
 __version__ = "0.1.0-alpha"
@@ -23,16 +24,26 @@ __version__ = "0.1.0-alpha"
 SPIKE_LIMIT = 25000
 
 
+def _commit_hash():
+    import os
+    import subprocess
+
+    old_wd = os.getcwd()
+    os.chdir(op.dirname(__file__))
+
+    try:
+        ver_info = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], universal_newlines=True).strip()
+    except subprocess.CalledProcessError:
+        ver_info = __version__
+    finally:
+        os.chdir(old_wd)
+
+    return ver_info
+
+
 def _err_exit(msg, status=1):
     print(msg, file=sys.stderr)
     sys.exit(status)
-
-
-def _log(msg, stdout, in_progress=False):
-    end = " ... " if in_progress else "\n"
-
-    if stdout:
-        print(msg, end=end)
 
 
 def _user_dialog(msg, options=("y", "n"), default_option="n"):
@@ -219,9 +230,9 @@ def copy_source_target(params, probe):
             _err_exit("aborting", 0)
 
     if params.copy:
-        _log(f"Copying {params.raw_source_file} to {params.raw_target_file}", params.verbose, in_progress=True)
+        log(f"Copying {params.raw_source_file} to {params.raw_target_file}", params.verbose, in_progress=True)
         shutil.copy2(params.raw_source_file, params.raw_target_file)
-        _log("done", params.verbose)
+        log("done", params.verbose)
 
     file_size_bytes = op.getsize(params.raw_source_file)
     byte_count = np.dtype(params.data_type).itemsize  # number of bytes in data type
@@ -291,11 +302,11 @@ def generate_hybrid(args):
 
     source, target = copy_source_target(params, probe)
 
-    _log("Loading event times and cluster IDs", params.verbose, in_progress=True)
+    log("Loading event times and cluster IDs", params.verbose, in_progress=True)
     io = importlib.import_module(f"factory.io.{params.output_type}")  # e.g., factory.io.phy, factory.io.kilosort, ...
     event_times = io.load_event_times(params.data_directory)
     event_clusters = io.load_event_clusters(params.data_directory)
-    _log("done", params.verbose)
+    log("done", params.verbose)
 
     gt_channels = []
     gt_times = []
@@ -306,45 +317,48 @@ def generate_hybrid(args):
 
         if unit_times.size > SPIKE_LIMIT:
             unit_times = np.random.choice(unit_times, size=SPIKE_LIMIT, replace=False)
-
-        # generate artificial events for this unit
-        _log(f"Generating ground truth for unit {unit_id}", params.verbose, in_progress=True)
-        art_events, channel_subset = construct_artificial_events(source, params, probe, unit_times)
-        if art_events is None:
-            _log("no waveforms crossed threshold; skipping", params.verbose)
+        elif unit_times.size == 0:
+            log(f"no events for unit {unit_id}", params.verbose)
             continue
 
-        _log("done", params.verbose)
+        # generate artificial events for this unit
+        log(f"Generating ground truth for unit {unit_id}", params.verbose, in_progress=True)
+        art_events, channel_subset = construct_artificial_events(source, params, probe, unit_times)
+        if art_events is None:
+            log("no waveforms crossed threshold; skipping", params.verbose)
+            continue
+
+        log("done", params.verbose)
 
         # shift channels
-        _log("Shifting channels", params.verbose, in_progress=True)
+        log("Shifting channels", params.verbose, in_progress=True)
         shifted_channels = factory.generate.shift.shift_channels(channel_subset, params, probe)
 
         if shifted_channels is None:
             continue  # cause is logged in `shift_channels`
 
-        _log("done", params.verbose)
+        log("done", params.verbose)
 
         # jitter events
-        _log("Jittering events", params.verbose, in_progress=True)
+        log("Jittering events", params.verbose, in_progress=True)
         jittered_times = factory.generate.shift.jitter_events(unit_times, params)
-        _log("done", params.verbose)
+        log("done", params.verbose)
 
         if jittered_times is None:
             continue
 
         # write to file
-        _log("Writing events to file", params.verbose, in_progress=True)
+        log("Writing events to file", params.verbose, in_progress=True)
         for i, jittered_center in enumerate(jittered_times):
             jittered_samples = np.arange(jittered_center - params.samples_before,
-                                         jittered_center + params.samples_after + 1)
+                                         jittered_center + params.samples_after + 1, dtype=jittered_center.dtype)
 
             shifted_window = factory.io.raw.read_roi(target, shifted_channels, jittered_samples)
             perturbed_data = shifted_window + art_events[:, :, i]
 
             factory.io.raw.write_roi(target, shifted_channels, jittered_samples, perturbed_data)
 
-        _log("done", params.verbose)
+        log("done", params.verbose)
 
         cc_indices = np.abs(art_events).max(axis=1).argmax(axis=0)
         center_channels = shifted_channels[cc_indices] + 1
@@ -360,13 +374,13 @@ def generate_hybrid(args):
 
     # save ground-truth units for validation
     filename = factory.io.gt.save_gt_units(dirname, gt_channels, gt_times, gt_labels)
-    _log(f"Firing times and labels saved to {filename}.", params.verbose)
+    log(f"Firing times and labels saved to {filename}.", params.verbose)
 
     # save parameter file for later reuse
     timestamp = int(datetime.datetime.now().timestamp())
     filename = op.join(dirname, f"params-{timestamp}.py")
     _write_config(filename, params)
-    _log(f"Parameter file to recreate this run saved at {filename}.", params.verbose)
+    log(f"Parameter file to recreate this run saved at {filename}.", params.verbose)
 
 
 def main():
@@ -400,8 +414,8 @@ if __name__ == "__main__":
         
 Please send the following output to {__author__}:
 
-Version:
-    {__version__}
+Version info/commit hash:
+    {_commit_hash()}
 Error:
     {str(e)}
 Traceback:

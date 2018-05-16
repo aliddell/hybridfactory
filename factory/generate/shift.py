@@ -5,6 +5,8 @@ import warnings
 import numpy as np
 import scipy.spatial
 
+from factory.io.logging import log
+
 
 def shift_channels(channels, params, probe):
     """Shift a subset of the channels.
@@ -37,14 +39,14 @@ def shift_channels(channels, params, probe):
     try:
         assert shifted_channels.min() > -1 and shifted_channels.max() < probe.channel_map.size
     except AssertionError:
-        warnings.warn(f"channel shift of {params.channel_shift} places events outside of probe range")
+        log(f"channel shift of {params.channel_shift} places events outside of probe range", params.verbose)
         return None
 
     # make sure our shifted channels don't land on unconnected channels
     try:
         assert np.intersect1d(shifted_channels, probe.channel_map[~probe.connected]).size == 0
     except AssertionError:
-        warnings.warn(f"channel shift of {params.channel_shift} places events on unconnected channels")
+        log(f"channel shift of {params.channel_shift} places events on unconnected channels", params.verbose)
         return None
 
     # make sure our shifted channels don't alter spatial relationships
@@ -54,7 +56,7 @@ def shift_channels(channels, params, probe):
     try:
         assert np.isclose(channel_distance, shifted_distance).all()
     except AssertionError:
-        warnings.warn(f"channel shift of {params.channel_shift} alters spatial relationship between channels")
+        log(f"channel shift of {params.channel_shift} alters spatial relationship between channels", params.verbose)
         return None
 
     return shifted_channels
@@ -91,7 +93,8 @@ def jitter_events(unit_times, params):
         assert (jittered_times - params.samples_before > 0).all() and \
                (jittered_times + params.samples_after < params.num_samples).all()
     except AssertionError:
-        warnings.warn(f"time jitter of {params.time_jitter} and sample window places events outside of sample range")
+        log(f"time jitter of {params.time_jitter} and sample window places events outside of sample range",
+            params.verbose)
         return None
 
     return jittered_times

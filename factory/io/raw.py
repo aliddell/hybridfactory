@@ -78,6 +78,7 @@ def unit_windows(source, unit_times, samples_before, samples_after, channels=Non
     assert isinstance(unit_times, np.ndarray)
     assert samples_before == int(samples_before)
     assert samples_after == int(samples_after)
+    assert unit_times.size > 0
 
     if channels is None:
         channels = np.arange(source.shape[0])
@@ -92,7 +93,7 @@ def unit_windows(source, unit_times, samples_before, samples_after, channels=Non
     windows = np.zeros((num_channels, num_samples, num_events))
 
     for i in range(num_events):
-        samples = np.arange(unit_times[i] - samples_before, unit_times[i] + samples_after + 1)
+        samples = np.arange(unit_times[i] - samples_before, unit_times[i] + samples_after + 1, dtype=unit_times.dtype)
         windows[:, :, i] = read_roi(source, channels, samples)
 
     return windows
