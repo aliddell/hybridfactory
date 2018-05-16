@@ -5,15 +5,13 @@ import os.path as op
 import numpy as np
 
 
-def _read_npy(filename, shift=False, flatten=True):
+def _read_npy(filename, flatten=True):
     """
 
     Parameters
     ----------
     filename : str
         Path to file to load.
-    shift : bool, optional
-        Subtract 1 from values to account for 1-based indexing by MATLAB.
     flatten : bool, optional
         Convert to 1d array.
 
@@ -25,8 +23,6 @@ def _read_npy(filename, shift=False, flatten=True):
     assert op.isfile(filename)
     result = np.load(filename)
 
-    if shift:
-        result = result - 1
     if flatten:
         result = result.ravel()
 
@@ -81,7 +77,7 @@ def load_event_times(dirname):
     """
 
     filename = op.join(dirname, "spike_times.npy")
-    result = _read_npy(filename, shift=True).astype(np.int64)
+    result = _read_npy(filename)
     assert (result == np.sort(result)).all()
 
     return result
