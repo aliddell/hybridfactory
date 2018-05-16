@@ -96,7 +96,10 @@ def load_waveforms(dirname):
     result : numpy.ndarray
     """
 
-    return _read_jrc(dirname, "raw")
+    # standardize on num_channels x num_samples x num_events
+    result = _read_jrc(dirname, "raw").swapaxes(0, 1)
+
+    return result
 
 
 def load_event_times(dirname):

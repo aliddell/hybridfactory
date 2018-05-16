@@ -2,12 +2,12 @@
 
 import numpy as np
 
-import factory.io.raw
+import factory.io
 
 
-def generate(source, params, probe, unit_times):
+def steinmetz(source, params, probe, unit_times):
     """
-    
+
     Parameters
     ----------
     source : numpy.memmap
@@ -43,6 +43,7 @@ def generate(source, params, probe, unit_times):
 
     # now create subarray for just appropriate channels
     events = windows[channels, :, :]  # num_channels x num_samples x num_events
+
     events_shift = events - events[:, 0, :].reshape(num_channels, 1, num_events, order="F")
 
     scale = np.arange(num_samples).reshape(1, num_samples, 1, order="F") / (num_samples - 1)
