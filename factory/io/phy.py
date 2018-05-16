@@ -97,5 +97,5 @@ def load_event_clusters(dirname):
     """
 
     filename = op.join(dirname, "spike_clusters.npy")
-    return _read_npy(filename)
+    return _read_npy(filename).astype(np.int64)
 

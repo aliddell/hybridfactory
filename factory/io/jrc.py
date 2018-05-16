@@ -1,5 +1,6 @@
 """Copyright (C) 2018 Vidrio Technologies. All rights reserved."""
 
+import os
 import os.path as op
 
 import h5py
@@ -11,9 +12,9 @@ def _read_matlab(dirname, field, flatten=False):
     """
 
     Parameters
-    ----------
+        ----------
     dirname : str
-        Path to directory containing rez.mat.
+        Path to directory containing *_jrc.mat.
     field : str
         Field to read from MAT file.
 
@@ -22,8 +23,8 @@ def _read_matlab(dirname, field, flatten=False):
     result : numpy.ndarray
     """
 
-    filename = op.join(dirname, "rez.mat")
-    assert op.isfile(filename)
+    assert op.isdir(dirname)
+    filename = op.join(dirname, [f for f in os.listdir(dirname) if f.endswith("_jrc.mat")][0])
 
     try:
         matfile = scipy.io.loadmat(filename)
@@ -44,7 +45,45 @@ def _read_matlab(dirname, field, flatten=False):
     return result
 
 
-def load_event_templates(dirname):
+def _read_jrc(dirname, dtype):
+    """
+
+    Parameters
+    ----------
+    dirname : str
+        Path to directory containing file to load.
+    dtype : {"raw", "filtered", "features"}
+
+    Returns
+    -------
+    result : numpy.ndarray
+    """
+
+    assert dtype in ("raw", "filtered", "features")
+
+    if dtype == "raw":
+        dims = tuple(_read_matlab(dirname, "dimm_raw", flatten=True).astype(np.int32))
+        dtype = np.int16
+        suffix = "_spkraw.jrc"
+    elif dtype == "filtered":
+        dims = tuple(_read_matlab(dirname, "dimm_spk", flatten=True).astype(np.int32))
+        dtype = np.int16
+        suffix = "_spkwav.jrc"
+    else:  # dtype == "features"
+        dims = tuple(_read_matlab(dirname, "dimm_fet", flatten=True).astype(np.int32))
+        dtype = np.float32
+        suffix = "_spkfet.jrc"
+
+    prefix = [f for f in os.listdir(dirname) if f.endswith("_jrc.mat")][0][:-8]
+    filename = op.join(dirname, prefix + suffix)
+
+    # `shape` as a parameter to memmap fails here
+    result = np.fromfile(filename, dtype=dtype).reshape(*dims, order='F')
+
+    return result
+
+
+def load_waveforms(dirname):
     """
 
     Parameters
@@ -57,37 +96,7 @@ def load_event_templates(dirname):
     result : numpy.ndarray
     """
 
-    st3 = _read_matlab(dirname, "rez/st3")
-    return st3[:, 1].astype(np.uint32) - 1
-
-
-def load_templates(dirname):
-    """
-
-    Parameters
-    ----------
-    dirname : str
-        Path to directory containing file to load.
-
-    Returns
-    -------
-    result : numpy.ndarray
-    """
-
-    # adapted from rezToPhy.m
-    U = _read_matlab(dirname, "rez/U")
-    W = _read_matlab(dirname, "rez/W")
-
-    nt0 = W.shape[0]
-    n_filt = _read_matlab(dirname, "rez/ops/Nfilt", flatten=True)[0].astype(np.int64)
-    n_chan = _read_matlab(dirname, "rez/ops/Nchan", flatten=True)[0].astype(np.int64)
-
-    templates = np.zeros((n_filt, nt0, n_chan), dtype=np.float32)
-
-    for i in range(n_filt):
-        templates[i, :, :] = (np.matrix(U[:, i, :]) * np.matrix(W[:, i, :]).T).T
-
-    return templates
+    return _read_jrc(dirname, "raw")
 
 
 def load_event_times(dirname):
@@ -103,9 +112,7 @@ def load_event_times(dirname):
     result : numpy.ndarray
     """
 
-    st3 = _read_matlab(dirname, "rez/st3")
-    result = st3[:, 0].astype(np.uint64)
-
+    result = _read_matlab(dirname, "viTime_spk", flatten=True).astype(np.uint64)
     assert (result == np.sort(result)).all()
 
     return result
@@ -124,11 +131,7 @@ def load_event_clusters(dirname):
     result : numpy.ndarray
     """
 
-    st3 = _read_matlab(dirname, "rez/st3")
-    if st3.shape[1] > 4:
-        result = st3[:, 4]
-    else:
-        result = st3[:, 1]
+    result = _read_matlab(dirname, "S_clu/viClu", flatten=True)
 
     return result.astype(np.int64) - 1
 
