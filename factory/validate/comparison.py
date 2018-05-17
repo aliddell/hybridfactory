@@ -49,5 +49,10 @@ def build_confusion_matrix(true_labels, hybrid_labels, sort=True):
     confusion_matrix = confusion_matrix[:, keep]
     hybrid_unique_labels = hybrid_unique_labels[keep]
 
-    return pd.DataFrame(confusion_matrix, index=true_unique_labels, columns=hybrid_unique_labels)
+    confusion_matrix =  pd.DataFrame(confusion_matrix, index=true_unique_labels, columns=hybrid_unique_labels)
+
+    confusion_matrix.columns.name = "hybrid label"
+    confusion_matrix.index.name = "true label"
+
+    return confusion_matrix
 

@@ -77,8 +77,9 @@ def load_event_times(dirname):
     """
 
     filename = op.join(dirname, "spike_times.npy")
-    result = _read_npy(filename)
+    result = _read_npy(filename).astype(np.int64) - 1  # rezToPhy does not currently shift times
     assert (result == np.sort(result)).all()
+    assert result[0] >= 0
 
     return result
 

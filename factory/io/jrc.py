@@ -102,6 +102,39 @@ def load_waveforms(dirname):
     return result
 
 
+def load_channel_neighbor_indices(dirname):
+    """
+
+    Parameters
+    ----------
+    dirname :
+
+    Returns
+    -------
+    result : numpy.ndarray
+    """
+
+    result = _read_matlab(dirname, "P/miSites", flatten=False).astype(np.uint32) - 1
+    return result
+
+
+def load_event_channel_indices(dirname):
+    """
+
+    Parameters
+    ----------
+    dirname : str
+        Path to directory containing file to load.
+
+    Returns
+    -------
+    result : numpy.ndarray
+    """
+
+    result = _read_matlab(dirname, "viSite_spk", flatten=True).astype(np.uint32) - 1
+    return result
+
+
 def load_event_times(dirname):
     """
 
@@ -115,8 +148,9 @@ def load_event_times(dirname):
     result : numpy.ndarray
     """
 
-    result = _read_matlab(dirname, "viTime_spk", flatten=True).astype(np.uint64)
+    result = _read_matlab(dirname, "viTime_spk", flatten=True).astype(np.int64) - 1
     assert (result == np.sort(result)).all()
+    assert result[0] >= 0
 
     return result
 
@@ -136,5 +170,5 @@ def load_event_clusters(dirname):
 
     result = _read_matlab(dirname, "S_clu/viClu", flatten=True)
 
-    return result.astype(np.int64) - 1
+    return result.astype(np.int64)
 

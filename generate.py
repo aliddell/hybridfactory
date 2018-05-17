@@ -12,6 +12,7 @@ import traceback
 
 import numpy as np
 
+import factory.io.jrc
 import factory.io.raw
 import factory.io.gt
 import factory.generate.shift
@@ -249,35 +250,39 @@ def copy_source_target(params, probe):
     return source, target
 
 
-def construct_artificial_events(source, params, probe, unit_times):
+def unit_channels_union(unit_mask, params, probe):
     """
 
     Parameters
     ----------
-    source : numpy.memmap
-        Memory map of data file.
+    unit_mask : numpy.ndarray
+        Boolean array of events to take for this unit.
     params : module
         Session parameters.
     probe : module
         Probe parameters.
-    unit_times : numpy.ndarray
-        Array of firing times for this unit.
 
     Returns
     -------
-    art_events : numpy.ndarray
-        Tensor, num_channels x num_samples x num_events, constructed by `generator`.
     channels : numpy.ndarray
-        Channels on which the original events occur.
+        Channels on which unit events occur.
     """
 
-    generator = getattr(factory.generate.generators, params.generator_type, None)
-    if generator is not None:
-        art_events, channels = generator(source, params, probe, unit_times)
-    else:
-        raise NotImplementedError(f"generator '{params.generator_type}' does not exist!")
+    # select all channels on which events occur for this unit...
+    event_channel_indices = factory.io.jrc.load_event_channel_indices(params.data_directory)
+    channel_neighbor_indices = factory.io.jrc.load_event_channel_indices(params.data_directory)
+    event_channels = probe.channel_map[probe.connected][event_channel_indices]
 
-    return art_events, channels
+    # ...find neighbors for all channels...
+    channel_neighbors = {}
+    for channel_neighborhood in probe.channel_map[probe.connected][channel_neighbor_indices].T:
+        channel_neighbors[channel_neighborhood[0]] = set(channel_neighborhood)
+
+    # ...and isolate the channels which are neighbors of distinct centers for this unit
+    unit_channel_centers = np.unique(event_channels[unit_mask])
+    unit_channels = np.array(list(set.union(*[channel_neighbors[c] for c in unit_channel_centers])))
+
+    return unit_channels
 
 
 def generate_hybrid(args):
@@ -290,7 +295,9 @@ def generate_hybrid(args):
     """
 
     config_dir = op.dirname(args.config)
-    config = op.basename(args.config).strip(".py")
+    config = op.basename(args.config).strip()
+    if config.endswith(".py"):
+        config = config[:-3]  # strip '.py' extension
 
     if config_dir not in sys.path:
         sys.path.insert(0, config_dir)
@@ -313,26 +320,51 @@ def generate_hybrid(args):
     gt_labels = []
 
     for unit_id in params.ground_truth_units:
-        unit_times = event_times[event_clusters == unit_id]
+        unit_mask = event_clusters == unit_id
+        num_events = np.where(unit_mask)[0].size
+        #unit_times = event_times[unit_mask]
 
-        if unit_times.size > SPIKE_LIMIT:
-            unit_times = np.random.choice(unit_times, size=SPIKE_LIMIT, replace=False)
-        elif unit_times.size == 0:
-            log(f"no events for unit {unit_id}", params.verbose)
+        if num_events > SPIKE_LIMIT:  # if more events than limit, select some to ignore
+            falsify = np.random.choice(np.where(unit_mask)[0], size=num_events-SPIKE_LIMIT, replace=False)
+            unit_mask[falsify] = False
+            num_events = SPIKE_LIMIT
+            #unit_times = np.random.choice(unit_times, size=SPIKE_LIMIT, replace=False)
+        elif num_events == 0:
+            log(f"No events found for unit {unit_id}", params.verbose)
             continue
 
         # generate artificial events for this unit
         log(f"Generating ground truth for unit {unit_id}", params.verbose, in_progress=True)
-        art_events, channel_subset = construct_artificial_events(source, params, probe, unit_times)
-        if art_events is None:
-            log("no waveforms crossed threshold; skipping", params.verbose)
+
+        #art_events, channel_subset = construct_artificial_events(source, event_times, unit_mask, params, probe)
+
+        unit_times = event_times[unit_mask]
+        unit_windows = factory.io.raw.unit_windows(source, unit_times, params.samples_before, params.samples_after)
+        unit_windows[probe.channel_map[~probe.connected], :, :] = 0  # zero out the unconnected channels
+
+        if params.output_type == "jrc":
+            unit_channels = unit_channels_union(unit_mask, params, probe)
+        else:
+            unit_channels = factory.generate.generators.threshold_events(unit_windows, params.event_threshold)
+
+        if unit_channels is None:
+            log("no channels found for unit", params.verbose)
             continue
+
+        # now create subarray for just appropriate channels
+        events = unit_windows[unit_channels, :, :]  # num_channels x num_samples x num_events
+
+        # actually generate the data
+        if params.generator_type == "steinmetz":
+            art_events = factory.generate.generators.steinmetz(events, params.num_singular_values)
+        else:
+            raise NotImplementedError(f"generator '{params.generator_type}' does not exist!")
 
         log("done", params.verbose)
 
         # shift channels
         log("Shifting channels", params.verbose, in_progress=True)
-        shifted_channels = factory.generate.shift.shift_channels(channel_subset, params, probe)
+        shifted_channels = factory.generate.shift.shift_channels(unit_channels, params, probe)
 
         if shifted_channels is None:
             continue  # cause is logged in `shift_channels`

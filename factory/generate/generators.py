@@ -5,6 +5,19 @@ import numpy as np
 import factory.io
 
 
+def threshold_events(windows, threshold):
+    # compute mean spike and get channels by thresholding
+    window_means = np.matrix(np.mean(windows, axis=2))
+    window_means_shift = window_means - window_means[:, 0]
+
+    unit_channels = np.nonzero(np.any(window_means_shift < threshold, axis=1))[0]
+
+    if unit_channels.size == 0:
+        return None
+
+    return unit_channels
+
+
 def steinmetz(events, num_singular_values):
     """
 

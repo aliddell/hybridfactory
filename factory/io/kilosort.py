@@ -104,9 +104,10 @@ def load_event_times(dirname):
     """
 
     st3 = _read_matlab(dirname, "rez/st3")
-    result = st3[:, 0].astype(np.uint64)
+    result = st3[:, 0].astype(np.int64) - 1
 
     assert (result == np.sort(result)).all()
+    assert result[0] >= 0
 
     return result
 
