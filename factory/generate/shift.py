@@ -26,7 +26,7 @@ def shift_channels(channels, params, probe):
         Channels shifted by some constant factor.
     """
 
-    # inverse_channel_map[probe.channel_map] == [1, 2, ..., probe.channel_map.size - 1]
+    # inverse_channel_map[probe.channel_map] == [1, 2, ..., probe.NCHANS - 1]
     inverse_channel_map = np.zeros(probe.channel_map.size, dtype=np.int64)
     inverse_channel_map[probe.channel_map] = np.arange(probe.channel_map.size)
 
