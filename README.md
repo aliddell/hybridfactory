@@ -96,9 +96,9 @@ See [sample_params.py](https://gitlab.com/vidriotech/spiegel/hybridfactory/blob/
   Default is 0.75.
   - `amplitude_scale_min`: Maximum factor for (uniformly-distributed) random amplitude scaling, in percentage units.
   Default is 2.
-  `samples_before`: Number of samples to take before an event timestep for artificial event construction.
+  - `samples_before`: Number of samples to take before an event timestep for artificial event construction.
   Default is 40.
-  `samples_before`: Number of samples to take after an event timestep for artificial event construction.
+  - `samples_after`: Number of samples to take after an event timestep for artificial event construction.
   Default is 40.
   - `event_threshold`: Negative threshold a channel must exceed to be considered part of an event.
   Default is -30.
