@@ -81,7 +81,7 @@ See [sample_params.py](https://gitlab.com/vidriotech/spiegel/hybridfactory/blob/
 
 ### Optional parameters
 
-  - `random_seed`: Nonnegative integer in the range $[0, 2^{31})$.
+  - `random_seed`: Nonnegative integer in the range $`[0, 2^{31})`$.
   Because this algorithm is randomized, setting a random seed allows for reproducible output.
   The default is itself randomly generated, but will be output in a `params-[TIMESTAMP].py` on successful completion.
   - `generator_type`: Algorithm used to construct the artificial events.
