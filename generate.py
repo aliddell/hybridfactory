@@ -4,6 +4,7 @@
 
 import argparse
 import datetime
+import glob
 import importlib
 import os.path as op
 import shutil
@@ -74,9 +75,9 @@ def _legal_params():
                        "raw_target_file": None,
                        "data_type": [np.int16],
                        "sample_rate": None,
-                       "output_type": ["kilosort", "phy"],
+                       "output_type": ["kilosort", "phy", "jrc"],
                        "data_directory": None,
-                       "probe_type": ["npix3a", "eMouse"],
+                       "probe_type": ["npix3a", "eMouse", "hh2_arseny"],
                        "ground_truth_units": None}
 
     optional_params = {"random_seed": None,
@@ -89,7 +90,8 @@ def _legal_params():
                        "event_threshold": -30,
                        "offset": 0,
                        "copy": False,
-                       "overwrite": False}
+                       "overwrite": False,
+                       "start_time": 0}
 
     return required_params, optional_params
 
@@ -100,6 +102,8 @@ def _write_param(fh, param, param_val):
             param_val = "np.int16"
     elif isinstance(param_val, str):  # enclose string in quotes
         param_val = f'r"{param_val}"'
+    elif isinstance(param_val, np.ndarray):  # numpy doesn't do roundtripping
+        param_val = param_val.tolist()
     elif param_val is None:
         return
 
@@ -171,14 +175,16 @@ def load_params_probe(config):
 
         if required_params[param] is not None and param_val not in required_params[param]:
             _err_exit(f"legal values for parameter '{param}' are: {', '.join(list(map(str, required_params[param])))}")
-        elif param == "raw_source_file" and not op.isfile(param_val):
-            _err_exit(f"can't open source file '{param_val}'")
+        elif param == "raw_source_file":
+            rsf = glob.glob(param_val)
+            if not rsf:
+                _err_exit(f"can't open source file '{param_val}'")
         elif param == "sample_rate" and (not isinstance(param_val, int) or param_val <= 0):
             _err_exit("sample_rate must be a positive integer")
         elif param == "data_directory" and not op.isdir(param_val):
             _err_exit(f"can't open data directory '{param_val}'")
         elif param == "ground_truth_units" and not hasattr(param_val, "__getitem__"):
-            _err_exit("ground_truth_units must be iterable")
+            _err_exit("parameter 'ground_truth_units' must be iterable")
 
     probe = importlib.import_module(f"factory.probes.{params.probe_type}")  # e.g., factory.probes.npix3a
 
@@ -192,16 +198,24 @@ def load_params_probe(config):
 
         param_val = params.__dict__[param]
 
-        if param not in ("generator_type", "overwrite") and not isinstance(param_val, int):
+        if param not in ("generator_type", "overwrite", "start_time") and not isinstance(param_val, int):
             _err_exit(f"parameter '{param}' must be an integer")
         elif param in ("overwrite", "copy") and not isinstance(param_val, bool):
-            _err_exit(f"legal values for {param} are: True, False")
+            _err_exit(f"parameter '{param}' must be either True or False")
         elif param in ("samples_before", "samples_after", "time_jitter") and param_val <= 0:
-            _err_exit(f"{param} must be a positive integer")
+            _err_exit(f"parameter '{param}' must be a positive integer")
         elif param == "event_threshold" and param_val >= 0:
-            _err_exit("event_threshold must be a negative integer")
+            _err_exit("parameter 'event_threshold' must be a negative integer")
         elif param in ("random_seed", "channel_shift", "offset") and param_val < 0:
-            _err_exit(f"{param} must be a nonnegative integer")
+            _err_exit(f"parameter '{param}' must be a nonnegative integer")
+        elif param == "start_time":
+            if hasattr(param_val, "__getitem__"):
+                if not all([(x == int(x) and x >= 0) for x in param_val]):
+                    _err_exit("parameter 'start_time' must contain all nonnegative integers")
+            elif param_val != int(param_val) or param_val < 0:
+                _err_exit("parameter 'start_time' must be a nonnegative integer")
+
+    params.me = op.abspath(config)  # save location of config file
 
     return params, probe
 
@@ -224,30 +238,57 @@ def copy_source_target(params, probe):
         Memory map of target data file.
     """
 
-    if op.isfile(params.raw_target_file) and not params.overwrite:
-        if _user_dialog(f"Target file {params.raw_target_file} exists! Overwrite?") == "y":
-            params.overwrite = True
-        else:
-            _err_exit("aborting", 0)
+    raw_source_files = glob.glob(params.raw_source_file)
 
-    if params.copy:
-        log(f"Copying {params.raw_source_file} to {params.raw_target_file}", params.verbose, in_progress=True)
-        shutil.copy2(params.raw_source_file, params.raw_target_file)
-        log("done", params.verbose)
+    if len(raw_source_files) > 1:
+        assert len(raw_source_files) == len(params.start_time)
+        # TODO: we need a better way to rename batches of files we got from a glob
+        # for now, we just add .GT to the extension and change the directory to the data_directory
+        raw_target_files = raw_source_files.copy()
+        for k, rtf in enumerate(raw_target_files):
+            # just save hybrid data files in directory containing params file
+            dirname = op.dirname(rtf)
+            rtf = rtf.replace(dirname, op.dirname(params.me))
 
-    file_size_bytes = op.getsize(params.raw_source_file)
-    byte_count = np.dtype(params.data_type).itemsize  # number of bytes in data type
-    nrows = probe.NCHANS
-    ncols = file_size_bytes // (nrows * byte_count)
+            try:
+                last_dot = -(rtf[::-1].index('.') + 1)
+                rtf = rtf[:last_dot] + ".GT" + rtf[last_dot:]  # add ".GT" before extension
+            except ValueError:  # no '.' found in rtf
+                rtf += ".GT"  # add ".GT" at the end
+            finally:
+                raw_target_files[k] = rtf
 
-    params.num_samples = ncols
+    else:
+        raw_target_files = [params.raw_target_file]
 
-    source = np.memmap(params.raw_source_file, dtype=params.data_type, offset=params.offset, mode="r",
-                       shape=(nrows, ncols), order="F")
-    target = np.memmap(params.raw_target_file, dtype=params.data_type, offset=params.offset, mode="r+",
-                       shape=(nrows, ncols), order="F")
+    for k, raw_source_file in enumerate(raw_source_files):
+        start_time = params.start_time[k]
+        raw_target_file = raw_target_files[k]
 
-    return source, target
+        if op.isfile(raw_target_file) and not params.overwrite:
+            if _user_dialog(f"Target file {raw_target_file} exists! Overwrite?") == "y":
+                params.overwrite = True
+            else:
+                _err_exit("aborting", 0)
+
+        if params.copy:
+            log(f"Copying {raw_source_file} to {raw_target_file}", params.verbose, in_progress=True)
+            shutil.copy2(raw_source_file, raw_target_file)
+            log("done", params.verbose)
+
+        file_size_bytes = op.getsize(raw_source_file)
+        byte_count = np.dtype(params.data_type).itemsize  # number of bytes in data type
+        nrows = probe.NCHANS
+        ncols = file_size_bytes // (nrows * byte_count)
+
+        params.num_samples = ncols
+
+        source = np.memmap(raw_source_file, dtype=params.data_type, offset=params.offset, mode="r",
+                           shape=(nrows, ncols), order="F")
+        target = np.memmap(raw_target_file, dtype=params.data_type, offset=params.offset, mode="r+",
+                           shape=(nrows, ncols), order="F")
+
+        yield source, target, start_time
 
 
 def unit_channels_union(unit_mask, params, probe):
@@ -270,7 +311,7 @@ def unit_channels_union(unit_mask, params, probe):
 
     # select all channels on which events occur for this unit...
     event_channel_indices = factory.io.jrc.load_event_channel_indices(params.data_directory)
-    channel_neighbor_indices = factory.io.jrc.load_event_channel_indices(params.data_directory)
+    channel_neighbor_indices = factory.io.jrc.load_channel_neighbor_indices(params.data_directory)
     event_channels = probe.channel_map[probe.connected][event_channel_indices]
 
     # ...find neighbors for all channels...
@@ -307,8 +348,6 @@ def generate_hybrid(args):
 
     np.random.seed(params.random_seed)
 
-    source, target = copy_source_target(params, probe)
-
     log("Loading event times and cluster IDs", params.verbose, in_progress=True)
     io = importlib.import_module(f"factory.io.{params.output_type}")  # e.g., factory.io.phy, factory.io.kilosort, ...
     event_times = io.load_event_times(params.data_directory)
@@ -319,90 +358,93 @@ def generate_hybrid(args):
     gt_times = []
     gt_labels = []
 
-    for unit_id in params.ground_truth_units:
-        unit_mask = event_clusters == unit_id
-        num_events = np.where(unit_mask)[0].size
-        #unit_times = event_times[unit_mask]
+    for source, target, start_time in copy_source_target(params, probe):
+        time_mask = (event_times - params.samples_before >= start_time) & (event_times - start_time +
+                                                                           params.samples_after < target.shape[1])
 
-        if num_events > SPIKE_LIMIT:  # if more events than limit, select some to ignore
-            falsify = np.random.choice(np.where(unit_mask)[0], size=num_events-SPIKE_LIMIT, replace=False)
-            unit_mask[falsify] = False
-            num_events = SPIKE_LIMIT
-            #unit_times = np.random.choice(unit_times, size=SPIKE_LIMIT, replace=False)
-        elif num_events == 0:
-            log(f"No events found for unit {unit_id}", params.verbose)
-            continue
+        for unit_id in params.ground_truth_units:
+            unit_mask = (event_clusters == unit_id) & time_mask
+            num_events = np.where(unit_mask)[0].size
 
-        # generate artificial events for this unit
-        log(f"Generating ground truth for unit {unit_id}", params.verbose, in_progress=True)
+            if num_events > SPIKE_LIMIT:  # if more events than limit, select some to ignore
+                falsify = np.random.choice(np.where(unit_mask)[0], size=num_events-SPIKE_LIMIT, replace=False)
+                unit_mask[falsify] = False
+            elif num_events == 0:
+                log(f"No events found for unit {unit_id}", params.verbose)
+                continue
 
-        #art_events, channel_subset = construct_artificial_events(source, event_times, unit_mask, params, probe)
+            # generate artificial events for this unit
+            log(f"Generating ground truth for unit {unit_id}", params.verbose, in_progress=True)
 
-        unit_times = event_times[unit_mask]
-        unit_windows = factory.io.raw.unit_windows(source, unit_times, params.samples_before, params.samples_after)
-        unit_windows[probe.channel_map[~probe.connected], :, :] = 0  # zero out the unconnected channels
+            unit_times = event_times[unit_mask] - start_time
+            unit_windows = factory.io.raw.unit_windows(source, unit_times, params.samples_before, params.samples_after)
+            unit_windows[probe.channel_map[~probe.connected], :, :] = 0  # zero out the unconnected channels
 
-        if params.output_type == "jrc":
-            unit_channels = unit_channels_union(unit_mask, params, probe)
-        else:
-            unit_channels = factory.generate.generators.threshold_events(unit_windows, params.event_threshold)
+            if params.output_type == "jrc":
+                unit_channels = unit_channels_union(unit_mask, params, probe)
+            else:
+                unit_channels = factory.generate.generators.threshold_events(unit_windows, params.event_threshold)
 
-        if unit_channels is None:
-            log("no channels found for unit", params.verbose)
-            continue
+            if unit_channels is None:
+                log("no channels found for unit", params.verbose)
+                continue
 
-        # now create subarray for just appropriate channels
-        events = unit_windows[unit_channels, :, :]  # num_channels x num_samples x num_events
+            # now create subarray for just appropriate channels
+            events = unit_windows[unit_channels, :, :]  # num_channels x num_samples x num_events
 
-        # actually generate the data
-        if params.generator_type == "steinmetz":
-            art_events = factory.generate.generators.steinmetz(events, params.num_singular_values)
-        else:
-            raise NotImplementedError(f"generator '{params.generator_type}' does not exist!")
+            # actually generate the data
+            if params.generator_type == "steinmetz":
+                if num_events < params.num_singular_values:
+                    log("not enough events to generate!", params.verbose)
+                    continue
+                art_events = factory.generate.generators.steinmetz(events, params.num_singular_values)
+            else:
+                raise NotImplementedError(f"generator '{params.generator_type}' does not exist!")
 
-        log("done", params.verbose)
+            log("done", params.verbose)
 
-        # shift channels
-        log("Shifting channels", params.verbose, in_progress=True)
-        shifted_channels = factory.generate.shift.shift_channels(unit_channels, params, probe)
+            # shift channels
+            log("Shifting channels", params.verbose, in_progress=True)
+            shifted_channels = factory.generate.shift.shift_channels(unit_channels, params, probe)
 
-        if shifted_channels is None:
-            continue  # cause is logged in `shift_channels`
+            if shifted_channels is None:
+                continue  # cause is logged in `shift_channels`
 
-        log("done", params.verbose)
+            log("done", params.verbose)
 
-        # jitter events
-        log("Jittering events", params.verbose, in_progress=True)
-        jittered_times = factory.generate.shift.jitter_events(unit_times, params)
-        log("done", params.verbose)
+            # jitter events
+            log("Jittering events", params.verbose, in_progress=True)
+            jittered_times = factory.generate.shift.jitter_events(unit_times, params)
+            log("done", params.verbose)
 
-        if jittered_times is None:
-            continue
+            if jittered_times is None:
+                continue
 
-        # write to file
-        log("Writing events to file", params.verbose, in_progress=True)
-        for i, jittered_center in enumerate(jittered_times):
-            jittered_samples = np.arange(jittered_center - params.samples_before,
-                                         jittered_center + params.samples_after + 1, dtype=jittered_center.dtype)
+            # write to file
+            log("Writing events to file", params.verbose, in_progress=True)
+            for i, jittered_center in enumerate(jittered_times):
+                jittered_samples = np.arange(jittered_center - params.samples_before,
+                                             jittered_center + params.samples_after + 1, dtype=jittered_center.dtype)
 
-            shifted_window = factory.io.raw.read_roi(target, shifted_channels, jittered_samples)
-            perturbed_data = shifted_window + art_events[:, :, i]
+                shifted_window = factory.io.raw.read_roi(target, shifted_channels, jittered_samples)
+                perturbed_data = shifted_window + art_events[:, :, i]
 
-            factory.io.raw.write_roi(target, shifted_channels, jittered_samples, perturbed_data)
+                factory.io.raw.write_roi(target, shifted_channels, jittered_samples, perturbed_data)
 
-        log("done", params.verbose)
+            log("done", params.verbose)
 
-        cc_indices = np.abs(art_events).max(axis=1).argmax(axis=0)
-        center_channels = shifted_channels[cc_indices] + 1
+            cc_indices = np.abs(art_events).max(axis=1).argmax(axis=0)
+            center_channels = shifted_channels[cc_indices] + 1
 
-        gt_channels.append(center_channels)
-        gt_times.append(jittered_times)
-        gt_labels.append(unit_id)
+            gt_channels.append(center_channels)
+            gt_times.append(jittered_times + start_time)
+            gt_labels.append(unit_id)
 
-    # finished writing, flush to file
-    del source, target
+        # finished writing, flush to file
+        del source, target
 
-    dirname = op.dirname(params.raw_target_file)
+    # save everything for later
+    dirname = op.dirname(params.me)
 
     # save ground-truth units for validation
     filename = factory.io.gt.save_gt_units(dirname, gt_channels, gt_times, gt_labels)
