@@ -257,12 +257,13 @@ def copy_source_target(params, probe):
                 rtf += ".GT"  # add ".GT" at the end
             finally:
                 raw_target_files[k] = rtf
-
+        start_times = params.start_time
     else:
         raw_target_files = [params.raw_target_file]
+        start_times = [params.start_time]
 
     for k, raw_source_file in enumerate(raw_source_files):
-        start_time = params.start_time[k]
+        start_time = start_times[k]
         raw_target_file = raw_target_files[k]
 
         if op.isfile(raw_target_file) and not params.overwrite:

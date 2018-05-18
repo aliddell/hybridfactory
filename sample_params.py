@@ -12,7 +12,7 @@ data_type = np.int16
 sample_rate = 25000
 # directory containing output from spike sorter
 data_directory = r"C:\Users\Alan\Documents\Data\eMouse"
-# type of output from spike sorter, e.g., "phy", "kilosort" (for rez.mat), "jrclust" (for *.jrc)
+# type of output from spike sorter, e.g., "phy", "kilosort" (for rez.mat), "jrc" (for *.jrc)
 output_type = "phy"
 # probe layout
 probe_type = "eMouse"
@@ -29,7 +29,7 @@ generator_type = "steinmetz"
 num_singular_values = 6
 # number of channels to shift the units by
 channel_shift = 4
-# standard deviation of time jitter
+# scale factor for randomly-generated jitter
 time_jitter = 500
 # minimum amplitude scale factor
 amplitude_scale_min = 0.75
