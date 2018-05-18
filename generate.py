@@ -84,12 +84,12 @@ def _legal_params():
                        "generator_type": ["steinmetz"],
                        "num_singular_values": 6,
                        "channel_shift": None,  # depends on probe
-                       "time_jitter": 50,
+                       "time_jitter": 500,
                        "samples_before": 40,
                        "samples_after": 40,
                        "event_threshold": -30,
                        "offset": 0,
-                       "copy": False,
+                       "copy": True,
                        "overwrite": False,
                        "start_time": 0}
 

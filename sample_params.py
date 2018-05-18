@@ -43,7 +43,7 @@ samples_after = 30
 event_threshold = -30
 # point in the raw file at which the data starts
 offset = 0
-# whether or not to copy the source to the target; if not sure, you probably want True
+# whether or not to copy the source to the target
 copy = True
 # whether or not to overwrite a target file if it already exists
 overwrite = True
