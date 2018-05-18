@@ -47,3 +47,5 @@ offset = 0
 copy = True
 # whether or not to overwrite a target file if it already exists
 overwrite = True
+# start time in samples; can either be a nonnegative integer or an iterable of same; REQUIRED for globbed source files
+start_time = 0
