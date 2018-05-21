@@ -111,7 +111,7 @@ See [sample_params.py](https://gitlab.com/vidriotech/spiegel/hybridfactory/blob/
   Default is True.
   - `overwrite`: Whether or not to overwrite a target file if it already exists.
   If this is False, you will be prompted.
-  Default is True.
+  Default is False.
   - `start_time`: Start time of data file in sample units.
   Nonnegative integer if `raw_source_file` is a single file, iterable of nonnegative integers if you have a globbed
   `raw_source_file`.
