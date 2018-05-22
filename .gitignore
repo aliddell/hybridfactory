@@ -1,7 +1,12 @@
+# editor files
 .idea/
 .ipynb_checkpoints/
-.vscode
+.vscode/
 __pycache__/
 
 # hybrid demo folder
 notebooks/demos/hybrid_demo
+
+# program output
+*.npy
+params-*.py
