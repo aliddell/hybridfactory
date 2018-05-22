@@ -341,7 +341,7 @@ def scale_events(events, params, probe):
     Parameters
     ----------
     events : numpy.ndarray
-        Boolean array of events to take for this unit.
+        Tensor, num_channels x num_samples x num_events.
     params : module
         Session parameters.
     probe : module
@@ -349,8 +349,8 @@ def scale_events(events, params, probe):
 
     Returns
     -------
-    channels : numpy.ndarray
-        Channels on which unit events occur.
+    scaled_events : numpy.ndarray
+        Tensor, num_channels x num_samples x num_events, scaled.
     """
 
     abs_events = np.abs(events)
