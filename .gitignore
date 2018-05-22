@@ -4,8 +4,8 @@
 .vscode/
 __pycache__/
 
-# hybrid demo folder
-notebooks/demos/hybrid_demo
+# hybrid demo folders
+notebooks/demos/*_demo/
 
 # program output
 *.npy
