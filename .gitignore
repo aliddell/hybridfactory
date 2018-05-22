@@ -1,3 +1,7 @@
 .idea/
 .ipynb_checkpoints/
+.vscode
 __pycache__/
+
+# hybrid demo folder
+notebooks/demos/hybrid_demo

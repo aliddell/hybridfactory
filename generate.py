@@ -85,6 +85,8 @@ def _legal_params():
                        "num_singular_values": 6,
                        "channel_shift": None,  # depends on probe
                        "time_jitter": 500,
+                       "amplitude_scale_min": 0.75,
+                       "amplitude_scale_max": 2.,
                        "samples_before": 40,
                        "samples_after": 40,
                        "event_threshold": -30,
@@ -198,7 +200,8 @@ def load_params_probe(config):
 
         param_val = params.__dict__[param]
 
-        if param not in ("generator_type", "overwrite", "start_time") and not isinstance(param_val, int):
+        if param not in ("generator_type", "overwrite", "start_time",
+                         "amplitude_scale_min", "amplitude_scale_max") and not isinstance(param_val, int):
             _err_exit(f"parameter '{param}' must be an integer")
         elif param in ("overwrite", "copy") and not isinstance(param_val, bool):
             _err_exit(f"parameter '{param}' must be either True or False")
@@ -214,6 +217,11 @@ def load_params_probe(config):
                     _err_exit("parameter 'start_time' must contain all nonnegative integers")
             elif param_val != int(param_val) or param_val < 0:
                 _err_exit("parameter 'start_time' must be a nonnegative integer")
+        elif param.startswith("amplitude_scale") and param_val <= 0:
+            _err_exit("parameter '{param}' must be a positive float")
+    
+    if params.amplitude_scale_min > params.amplitude_scale_max:
+        _err_exit("amplitude_scale_min must be less than or equal to amplitude_scale_max")
 
     params.me = op.abspath(config)  # save location of config file
 
@@ -327,6 +335,35 @@ def unit_channels_union(unit_mask, params, probe):
     return unit_channels
 
 
+def scale_events(events, params, probe):
+    """
+
+    Parameters
+    ----------
+    events : numpy.ndarray
+        Boolean array of events to take for this unit.
+    params : module
+        Session parameters.
+    probe : module
+        Probe parameters.
+
+    Returns
+    -------
+    channels : numpy.ndarray
+        Channels on which unit events occur.
+    """
+
+    abs_events = np.abs(events)
+
+    centers = abs_events.max(axis=0).argmax(axis=0)
+
+    scale_factors = np.random.uniform(params.amplitude_scale_min, params.amplitude_scale_max, size=abs_events.shape[2])
+    scale_rows = [np.hstack((np.linspace(0, scale_factors[i], centers[i]),
+                  np.linspace(scale_factors[i], 0, events.shape[1]-centers[i]+1)[1:]))[np.newaxis, :] for i in range(events.shape[2])]
+
+    return np.stack(scale_rows, axis=2) * events
+
+
 def generate_hybrid(args):
     """
 
@@ -401,6 +438,8 @@ def generate_hybrid(args):
                 art_events = factory.generate.generators.steinmetz(events, params.num_singular_values)
             else:
                 raise NotImplementedError(f"generator '{params.generator_type}' does not exist!")
+
+            art_events = scale_events(art_events, params, probe)
 
             log("done", params.verbose)
 
