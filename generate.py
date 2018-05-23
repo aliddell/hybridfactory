@@ -410,7 +410,8 @@ def generate_hybrid(args):
             log(f"Generating ground truth for unit {unit_id}", params.verbose, in_progress=True)
 
             unit_times = event_times[unit_mask] - start_time
-            unit_windows = factory.io.raw.unit_windows(source, unit_times, params.samples_before, params.samples_after)
+            unit_windows = factory.io.raw.unit_windows(source, unit_times, params.samples_before, params.samples_after,
+                                                       car_channels=np.where(probe.connected)[0])
             unit_windows[probe.channel_map[~probe.connected], :, :] = 0  # zero out the unconnected channels
 
             if params.output_type == "jrc":

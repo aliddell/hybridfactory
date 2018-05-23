@@ -79,7 +79,14 @@ def read_roi(source, channels, samples):
     assert isinstance(channels, np.ndarray)
     assert isinstance(samples, np.ndarray)
 
-    return source[channels[:, np.newaxis], samples[np.newaxis, :]]
+    if len(channels.shape) == 1:
+        channels = channels[:, np.newaxis]
+    if len(samples.shape) == 1:
+        samples = samples[np.newaxis, :]
+
+    values = source[channels, samples]
+
+    return values
 
 
 def write_roi(target, channels, samples, data):
@@ -106,7 +113,7 @@ def write_roi(target, channels, samples, data):
     target[channels[:, np.newaxis], samples[np.newaxis, :]] = data
 
 
-def unit_windows(source, unit_times, samples_before, samples_after):
+def unit_windows(source, unit_times, samples_before, samples_after, car_channels=None):
     """
 
     Parameters
@@ -119,6 +126,8 @@ def unit_windows(source, unit_times, samples_before, samples_after):
         Number of samples before each unit time to read.
     samples_after : int
         Number of samples after each unit time to read.
+    car_channels : numpy.ndarray, optional
+        Channels to average and subtract.
 
     Returns
     -------
@@ -142,7 +151,8 @@ def unit_windows(source, unit_times, samples_before, samples_after):
         samples = np.arange(unit_times[i] - samples_before, unit_times[i] + samples_after + 1, dtype=unit_times.dtype)
         windows[:, :, i] = read_roi(source, np.arange(num_channels), samples)
 
-    # apply common-average referenc
+    if car_channels is not None:
+        windows -= np.mean(windows[car_channels, :, :], axis=0)
 
     return windows
 

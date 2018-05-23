@@ -17,7 +17,7 @@ output_type = "phy"
 # probe layout
 probe_type = "eMouse"
 # indices (cluster labels) of ground-truth units
-ground_truth_units = [8, 16, 18, 26, 32, 34]
+ground_truth_units = [6, 17, 20, 26, 30, 36, 39, 57]
 
 # OPTIONAL PARAMETERS
 
