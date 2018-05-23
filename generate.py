@@ -220,6 +220,8 @@ def load_params_probe(config):
         elif param.startswith("amplitude_scale") and param_val <= 0:
             _err_exit("parameter '{param}' must be a positive float")
     
+    if params.samples_before + params.samples_after + 1 <= np.count_nonzero(probe.connected):
+        _err_exit("you must take more samples than there are connected channels; increase samples_before, samples_after, or both")
     if params.amplitude_scale_min > params.amplitude_scale_max:
         _err_exit("amplitude_scale_min must be less than or equal to amplitude_scale_max")
 

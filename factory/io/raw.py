@@ -152,7 +152,9 @@ def unit_windows(source, unit_times, samples_before, samples_after, car_channels
         windows[:, :, i] = read_roi(source, np.arange(num_channels), samples)
 
     if car_channels is not None:
-        windows -= np.mean(windows[car_channels, :, :], axis=0)
+        windows[car_channels] -= np.mean(windows[car_channels, :, :], axis=1)[:, np.newaxis, :]
+    else:
+        windows -= np.mean(windows, axis=1)[:, np.newaxis, :]
 
     return windows
 
