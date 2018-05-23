@@ -131,7 +131,7 @@ def pairwise_scores(source_templates, hybrid_templates, params, probe, true_even
         template = source_templates[tid]
         shifted_template = shift_template(template, params, probe, inverse_channel_map)
 
-        matches, t_scores, indices = compare_templates(shifted_template, hybrid_templates, how)
+        _, t_scores, indices = compare_templates(shifted_template, hybrid_templates, how)
         for index, score in zip(indices, t_scores):
             scores[(tid, index)] = score
 
