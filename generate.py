@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""Copyright (C) 2018 Vidrio Technologies. All rights reserved."""
+# Copyright (C) 2018 Vidrio Technologies. All rights reserved.
 
 import argparse
 import datetime

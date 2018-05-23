@@ -1,4 +1,4 @@
-"""Copyright (C) 2018 Vidrio Technologies. All rights reserved."""
+# Copyright (C) 2018 Vidrio Technologies. All rights reserved.
 
 
 def log(msg, stdout, in_progress=False):

@@ -1,3 +1,5 @@
+# Copyright (C) 2018 Vidrio Technologies. All rights reserved.
+
 import numpy as np
 import pandas as pd
 
