@@ -4,6 +4,9 @@
 .vscode/
 __pycache__/
 
+# built documentation
+docs/build
+
 # hybrid demo folders
 notebooks/demos/*_demo/
 
