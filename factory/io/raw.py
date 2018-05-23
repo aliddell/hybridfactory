@@ -1,6 +1,60 @@
 # Copyright (C) 2018 Vidrio Technologies. All rights reserved.
 
+import os.path as op
+
 import numpy as np
+
+
+def open_raw(filename, data_type, num_channels, mode="r", offset=0):
+    """
+
+    Parameters
+    ----------
+    filename : str
+        Path to file to open.
+    data_type : numpy.dtype
+        Type of data contained in memory-mapped file.
+    num_channels : int
+        Number of channels (i.e., rows) in memory-mapped file.
+    mode : {'r+', 'r', 'w+', 'c'}, optional
+        The file is opened in this mode:
+
+        +------+-------------------------------------------------------------+
+        | 'r'  | Open existing file for reading only.                        |
+        +------+-------------------------------------------------------------+
+        | 'r+' | Open existing file for reading and writing.                 |
+        +------+-------------------------------------------------------------+
+        | 'w+' | Create or overwrite existing file for reading and writing.  |
+        +------+-------------------------------------------------------------+
+        | 'c'  | Copy-on-write: assignments affect data in memory, but       |
+        |      | changes are not saved to disk.  The file on disk is         |
+        |      | read-only.                                                  |
+        +------+-------------------------------------------------------------+
+
+        Default is 'r'.
+    offset: int, optional
+        In the file, array data starts at this offset.
+
+    Returns
+    -------
+    mmap : numpy.memmap
+        Memory map of `filename`.
+    """
+
+    assert op.isfile(filename)
+    assert num_channels == int(num_channels) and num_channels > 0
+    assert mode in ("r", "r+", "w+", "c")
+    assert offset == int(offset) and offset >= 0
+
+    file_size_bytes = op.getsize(filename)
+    byte_count = np.dtype(data_type).itemsize  # number of bytes in data type
+    nrows = num_channels
+    ncols = file_size_bytes // (nrows * byte_count)
+
+    mmap = np.memmap(filename, dtype=data_type, offset=offset, mode=mode,
+                     shape=(nrows, ncols), order="F")
+
+    return mmap
 
 
 def read_roi(source, channels, samples):
@@ -52,7 +106,7 @@ def write_roi(target, channels, samples, data):
     target[channels[:, np.newaxis], samples[np.newaxis, :]] = data
 
 
-def unit_windows(source, unit_times, samples_before, samples_after, channels=None):
+def unit_windows(source, unit_times, samples_before, samples_after):
     """
 
     Parameters
@@ -65,8 +119,6 @@ def unit_windows(source, unit_times, samples_before, samples_after, channels=Non
         Number of samples before each unit time to read.
     samples_after : int
         Number of samples after each unit time to read.
-    channels : numpy.ndarray, optional
-        Channels (i.e., rows) to read from.
 
     Returns
     -------
@@ -80,13 +132,7 @@ def unit_windows(source, unit_times, samples_before, samples_after, channels=Non
     assert samples_after == int(samples_after)
     assert unit_times.size > 0
 
-    if channels is None:
-        channels = np.arange(source.shape[0])
-        num_channels = source.shape[0]
-    else:
-        assert isinstance(channels, np.ndarray)
-        num_channels = channels.size
-
+    num_channels = source.shape[0]
     num_samples = samples_before + samples_after + 1
     num_events = unit_times.size
 
@@ -94,7 +140,9 @@ def unit_windows(source, unit_times, samples_before, samples_after, channels=Non
 
     for i in range(num_events):
         samples = np.arange(unit_times[i] - samples_before, unit_times[i] + samples_after + 1, dtype=unit_times.dtype)
-        windows[:, :, i] = read_roi(source, channels, samples)
+        windows[:, :, i] = read_roi(source, np.arange(num_channels), samples)
+
+    # apply common-average referenc
 
     return windows
 

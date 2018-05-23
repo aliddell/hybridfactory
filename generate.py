@@ -285,17 +285,12 @@ def copy_source_target(params, probe):
             shutil.copy2(raw_source_file, raw_target_file)
             log("done", params.verbose)
 
-        file_size_bytes = op.getsize(raw_source_file)
-        byte_count = np.dtype(params.data_type).itemsize  # number of bytes in data type
-        nrows = probe.NCHANS
-        ncols = file_size_bytes // (nrows * byte_count)
-
-        params.num_samples = ncols
-
-        source = np.memmap(raw_source_file, dtype=params.data_type, offset=params.offset, mode="r",
-                           shape=(nrows, ncols), order="F")
-        target = np.memmap(raw_target_file, dtype=params.data_type, offset=params.offset, mode="r+",
-                           shape=(nrows, ncols), order="F")
+        source = factory.io.raw.open_raw(raw_source_file, params.data_type, probe.NCHANS, mode="r",
+                                         offset=params.offset)
+        target = factory.io.raw.open_raw(raw_source_file, params.data_type, probe.NCHANS, mode="r+",
+                                         offset=params.offset)
+        
+        params.num_samples = source.shape[1]
 
         yield source, target, start_time
 
