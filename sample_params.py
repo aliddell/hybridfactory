@@ -4,7 +4,7 @@ import numpy as np
 
 # path to file containing raw source data (currently only SpikeGL-formatted data is supported)
 raw_source_file = r"C:\Users\Alan\Documents\Data\eMouse\sim_binary.dat"
-# path to file to contain hybrid
+# path to file to contain hybrid data
 raw_target_file = r"C:\Users\Alan\Documents\Data\eMouse\sim_binary_GT.dat"
 # type of raw data, as a numpy dtype
 data_type = np.int16
@@ -47,5 +47,5 @@ offset = 0
 copy = True
 # whether or not to overwrite a target file if it already exists
 overwrite = True
-# start time in samples; can either be a nonnegative integer or an iterable of same; REQUIRED for globbed source files
-start_time = 0
+# whether or not to subtract out the true units from the hybrid data (EXPERIMENTAL)
+subtract = False
