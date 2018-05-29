@@ -1,7 +1,5 @@
 # Copyright (C) 2018 Vidrio Technologies. All rights reserved.
 
-import warnings
-
 import numpy as np
 import scipy.spatial
 
@@ -62,15 +60,13 @@ def shift_channels(channels, params, probe):
     return shifted_channels
 
 
-def jitter_events(unit_times, params):
+def jitter_events(unit_times, sample_rate, jitter_factor, samples_before, samples_after, upper_bound):
     """
 
     Parameters
     ----------
     unit_times : numpy.ndarray
         Firing times for this unit, to be jittered.
-    params : module
-        Session parameters.
 
     Returns
     -------
@@ -78,10 +74,10 @@ def jitter_events(unit_times, params):
         Jittered firing times for artificial events.
     """
 
-    isi_samples = params.sample_rate // 1000  # number of samples in 1 ms
+    isi_samples = sample_rate // 1000  # number of samples in 1 ms
     # normally-distributed jitter factor, with an absmin of `isi_samples`
-    jitter1 = isi_samples + np.abs(np.random.normal(loc=0, scale=params.time_jitter // 2, size=unit_times.size // 2))
-    jitter2 = -(isi_samples + np.abs(isi_samples + np.random.normal(loc=0, scale=params.time_jitter // 2,
+    jitter1 = isi_samples + np.abs(np.random.normal(loc=0, scale=jitter_factor // 2, size=unit_times.size // 2))
+    jitter2 = -(isi_samples + np.abs(isi_samples + np.random.normal(loc=0, scale=jitter_factor // 2,
                                                                     size=unit_times.size - jitter1.size)))
 
     # leaves a window of 2 ms around `unit_times` so units don't fire right on top of each other
@@ -89,12 +85,7 @@ def jitter_events(unit_times, params):
 
     jittered_times = unit_times + jitter
 
-    try:
-        assert (jittered_times - params.samples_before > 0).all() and \
-               (jittered_times + params.samples_after < params.num_samples).all()
-    except AssertionError:
-        log(f"time jitter of {params.time_jitter} and sample window places events outside of sample range",
-            params.verbose)
-        return None
+    mask = (jittered_times - samples_before > 0) & (jittered_times + samples_after < upper_bound)
+    jittered_times = jittered_times[mask]
 
     return jittered_times

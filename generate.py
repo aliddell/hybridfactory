@@ -15,11 +15,13 @@ import traceback
 import numpy as np
 import scipy.interpolate
 
-import factory.io.jrc
-import factory.io.spikegl
 import factory.io.gt
+import factory.io.jrc
+import factory.io.raw
+import factory.io.spikegl
 import factory.generate.shift
 import factory.generate.generators
+
 from factory.io.logging import log
 
 __author__ = "Alan Liddell <alan@vidriotech.com>"
@@ -75,6 +77,7 @@ def _user_dialog(msg, options=("y", "n"), default_option="n"):
 def _legal_params():
     required_params = {"raw_source_file": None,
                        "raw_target_file": None,
+                       "from_empty": True,
                        "data_type": [np.int16],
                        "sample_rate": None,
                        "output_type": ["kilosort", "phy", "jrc"],
@@ -83,17 +86,18 @@ def _legal_params():
                        "ground_truth_units": None}
 
     optional_params = {"random_seed": None,
-                       "generator_type": ["steinmetz"],
+                       "generator_type": ["svd_generator"],
                        "num_singular_values": 6,
                        "channel_shift": None,  # depends on probe
-                       "time_jitter": 500,
+                       "synthetic_rate": [],
+                       "jitter_factor": 500,
                        "amplitude_scale_min": 0.75,
                        "amplitude_scale_max": 2.,
                        "samples_before": 40,
                        "samples_after": 40,
                        "event_threshold": -30,
                        "offset": 0,
-                       "copy": True,
+                       "copy": False,
                        "overwrite": False,
                        "subtract": False}
 
@@ -183,12 +187,14 @@ def load_params_probe(config):
             rsf = glob.glob(param_val)
             if not rsf:
                 _err_exit(f"can't open source file '{param_val}'")
+        elif param == "from_empty" and not isinstance(param_val, bool):
+            _err_exit(f"parameter '{param}' must be either True or False")
         elif param == "sample_rate" and (not isinstance(param_val, int) or param_val <= 0):
             _err_exit("sample_rate must be a positive integer")
         elif param == "data_directory" and not op.isdir(param_val):
             _err_exit(f"can't open data directory '{param_val}'")
         elif param == "ground_truth_units" and not hasattr(param_val, "__getitem__"):
-            _err_exit("parameter 'ground_truth_units' must be iterable")
+            _err_exit(f"parameter '{param}' must be iterable")
 
     probe = importlib.import_module(f"factory.probes.{params.probe_type}")  # e.g., factory.probes.npix3a
 
@@ -196,18 +202,18 @@ def load_params_probe(config):
         if not hasattr(params, param) and param not in ("random_seed", "channel_shift"):  # set a reasonable default
             params.__dict__[param] = optional_params[param]
         elif param == "random_seed" and not hasattr(params, param):
-            params.random_seed = np.random.randint(0, 2**31)
+            params.random_seed = np.random.randint(0, 2 ** 31)
         elif param == "channel_shift" and not hasattr(params, param):
             params.channel_shift = probe.default_shift
 
         param_val = params.__dict__[param]
 
-        if param not in ("generator_type", "overwrite", "amplitude_scale_min", "amplitude_scale_max") and not \
-                isinstance(param_val, int):
+        if param not in ("generator_type", "overwrite", "amplitude_scale_min",
+                         "amplitude_scale_max", "synthetic_rate") and not isinstance(param_val, int):
             _err_exit(f"parameter '{param}' must be an integer")
         elif param in ("overwrite", "copy", "subtract") and not isinstance(param_val, bool):
             _err_exit(f"parameter '{param}' must be either True or False")
-        elif param in ("samples_before", "samples_after", "time_jitter") and param_val <= 0:
+        elif param in ("samples_before", "samples_after", "jitter_factor") and param_val <= 0:
             _err_exit(f"parameter '{param}' must be a positive integer")
         elif param == "event_threshold" and param_val >= 0:
             _err_exit("parameter 'event_threshold' must be a negative integer")
@@ -215,11 +221,17 @@ def load_params_probe(config):
             _err_exit(f"parameter '{param}' must be a nonnegative integer")
         elif param.startswith("amplitude_scale") and param_val <= 0:
             _err_exit("parameter '{param}' must be a positive float")
-    
+        elif param == "firing_rate" and not hasattr(param_val, "__getitem__"):
+            _err_exit(f"parameter '{param}' must be iterable")
+
     if params.samples_before + params.samples_after + 1 <= np.count_nonzero(probe.connected):
         _err_exit("fewer samples than connected channels; increase samples_before, samples_after, or both")
     if params.amplitude_scale_min > params.amplitude_scale_max:
         _err_exit("amplitude_scale_min must be less than or equal to amplitude_scale_max")
+    if len(params.synthetic_rate) not in (0, len(params.ground_truth_units)):
+        _err_exit("synthetic rate must either be empty or specified for each ground-truth unit")
+    elif any([(r <= 0 or r > params.sample_rate) for r in params.synthetic_rate]):
+        _err_exit("synthetic rates must be positive integers less than the specified sample rate")
 
     params.me = op.abspath(config)  # save location of config file
 
@@ -282,16 +294,24 @@ def copy_source_target(params, probe):
             else:
                 _err_exit("aborting", 0)
 
-        if params.copy:
+        if params.from_empty:
+            log(f"Laying down Gaussian noise in {raw_target_file}", params.verbose, in_progress=True)
+            target = factory.io.raw.open_raw(raw_target_file, params.data_type, probe.NCHANS, mode="w+",
+                                             offset=params.offset)
+            factory.io.raw.lay_noise(target, 20, 65536)
+            del target
+
+            log("done", params.verbose)
+        elif params.copy:
             log(f"Copying {raw_source_file} to {raw_target_file}", params.verbose, in_progress=True)
             shutil.copy2(raw_source_file, raw_target_file)
             log("done", params.verbose)
 
-        source = factory.io.spikegl.open_raw(raw_source_file, params.data_type, probe.NCHANS, mode="r",
-                                             offset=params.offset)
-        target = factory.io.spikegl.open_raw(raw_source_file, params.data_type, probe.NCHANS, mode="r+",
-                                             offset=params.offset)
-        
+        source = factory.io.raw.open_raw(raw_source_file, params.data_type, probe.NCHANS, mode="r",
+                                         offset=params.offset)
+        target = factory.io.raw.open_raw(raw_target_file, params.data_type, probe.NCHANS, mode="r+",
+                                         offset=params.offset)
+
         params.num_samples = source.shape[1]
 
         yield source, target, start_time
@@ -356,7 +376,8 @@ def scale_events(events, params, probe):
 
     scale_factors = np.random.uniform(params.amplitude_scale_min, params.amplitude_scale_max, size=abs_events.shape[2])
     scale_rows = [np.hstack((np.linspace(0, scale_factors[i], centers[i]),
-                  np.linspace(scale_factors[i], 0, events.shape[1]-centers[i]+1)[1:]))[np.newaxis, :] for i in range(events.shape[2])]
+                             np.linspace(scale_factors[i], 0, events.shape[1] - centers[i] + 1)[1:]))[np.newaxis, :] for
+                  i in range(events.shape[2])]
 
     return np.stack(scale_rows, axis=2) * events
 
@@ -379,15 +400,15 @@ def remove_spike(event_window, params):
     def _find_left_right(win, center=None):
         assert win.ndim == 1
 
-        m = win.size//2
-        rad = win.size//8
+        m = win.size // 2
+        rad = win.size // 8
 
         if center is None:  # assume window is "centered" at event
-            nbd = win[m-rad:m+rad]
+            nbd = win[m - rad:m + rad]
             center = np.abs(nbd).argmax() + m - rad
             is_local_min = nbd[rad] == nbd.min()
         else:
-            nbd = win[center-rad:center+rad]
+            nbd = win[center - rad:center + rad]
             is_local_min = nbd[rad] == nbd.min()
 
         # find points where first and second derivative change signs
@@ -401,24 +422,25 @@ def remove_spike(event_window, params):
         scale_factor2[scale_factor2 == 0] = 1
         abswdiff2 = wdiff2 / scale_factor2
 
-        turning_points = np.union1d(np.where(np.array([abswdiff[i] != abswdiff[i+1] for i in range(abswdiff.size - 1)]))[0] + 1,
-                                    np.where(np.array([abswdiff2[i] != abswdiff2[i+1] for i in range(abswdiff2.size - 1)]))[0] + 2)
-        tp_center = np.abs(center-turning_points).argmin()
+        turning_points = np.union1d(
+                np.where(np.array([abswdiff[i] != abswdiff[i + 1] for i in range(abswdiff.size - 1)]))[0] + 1,
+                np.where(np.array([abswdiff2[i] != abswdiff2[i + 1] for i in range(abswdiff2.size - 1)]))[0] + 2)
+        tp_center = np.abs(center - turning_points).argmin()
 
         if tp_center < 2 or tp_center > turning_points.size - 2:
             if is_local_min:  # all differences are negative until center, then positive
                 # find the last difference before the center that is positive
-                wleft = center - np.where(wdiff[:center-1][::-1] > 0)[0][0]
+                wleft = center - np.where(wdiff[:center - 1][::-1] > 0)[0][0]
                 # find the first difference after the center that is negative
-                wright = center + np.where(wdiff[center+1:] < 0)[0][0]
+                wright = center + np.where(wdiff[center + 1:] < 0)[0][0]
             else:  # all differences are positive until center, then negative
                 # find the last difference before the center that is negative
-                wleft = center - np.where(wdiff[:center-1][::-1] < 0)[0][0]
+                wleft = center - np.where(wdiff[:center - 1][::-1] < 0)[0][0]
                 # find the first difference after the center that is positive
-                wright = center + np.where(wdiff[center+1:] > 0)[0][0]
+                wright = center + np.where(wdiff[center + 1:] > 0)[0][0]
         else:
-            wleft = turning_points[tp_center-2] + (center - turning_points[tp_center-2])//2
-            wright = turning_points[tp_center+2] + (turning_points[tp_center+2] - center)//2
+            wleft = turning_points[tp_center - 2] + (center - turning_points[tp_center - 2]) // 2
+            wright = turning_points[tp_center + 2] + (turning_points[tp_center + 2] - center) // 2
 
         return wleft, wright
 
@@ -433,7 +455,7 @@ def remove_spike(event_window, params):
         g = scipy.interpolate.interp1d(exes, whys, "cubic")
 
         new_window[i, :] = g(np.arange(window.size))
-        new_window[i, wl:wr] += 3*np.random.randn(wr-wl)
+        new_window[i, wl:wr] += 3 * np.random.randn(wr - wl)
 
     return new_window
 
@@ -474,12 +496,12 @@ def generate_hybrid(args):
         time_mask = (event_times - params.samples_before >= start_time) & (event_times - start_time +
                                                                            params.samples_after < target.shape[1])
 
-        for unit_id in params.ground_truth_units:
+        for k, unit_id in enumerate(params.ground_truth_units):
             unit_mask = (event_clusters == unit_id) & time_mask
             num_events = np.where(unit_mask)[0].size
 
             if num_events > SPIKE_LIMIT:  # if more events than limit, select some to ignore
-                falsify = np.random.choice(np.where(unit_mask)[0], size=num_events-SPIKE_LIMIT, replace=False)
+                falsify = np.random.choice(np.where(unit_mask)[0], size=num_events - SPIKE_LIMIT, replace=False)
                 unit_mask[falsify] = False
             elif num_events == 0:
                 log(f"No events found for unit {unit_id}", params.verbose)
@@ -489,8 +511,9 @@ def generate_hybrid(args):
             log(f"Generating ground truth for unit {unit_id}", params.verbose, in_progress=True)
 
             unit_times = event_times[unit_mask] - start_time
-            unit_windows = factory.io.spikegl.unit_windows(source, unit_times, params.samples_before, params.samples_after,
-                                                           car_channels=np.where(probe.connected)[0])
+            unit_windows = factory.io.raw.unit_windows(source, unit_times, params.samples_before,
+                                                       params.samples_after,
+                                                       car_channels=np.where(probe.connected)[0])
             unit_windows[probe.channel_map[~probe.connected], :, :] = 0  # zero out the unconnected channels
 
             if params.output_type == "jrc":
@@ -506,11 +529,11 @@ def generate_hybrid(args):
             events = unit_windows[unit_channels, :, :]  # num_channels x num_samples x num_events
 
             # actually generate the data
-            if params.generator_type == "steinmetz":
+            if params.generator_type == "svd_generator":
                 if num_events < params.num_singular_values:
                     log("not enough events to generate!", params.verbose)
                     continue
-                art_events = factory.generate.generators.steinmetz(events, params.num_singular_values)
+                art_events = factory.generate.generators.svd_generator(events, params.num_singular_values)
             else:
                 raise NotImplementedError(f"generator '{params.generator_type}' does not exist!")
 
@@ -529,11 +552,22 @@ def generate_hybrid(args):
 
             # jitter events
             log("Jittering events", params.verbose, in_progress=True)
-            jittered_times = factory.generate.shift.jitter_events(unit_times, params)
+            if params.synthetic_rate:
+                synthetic_rate = params.synthetic_rate[k]
+                stop = target.shape[1] - params.samples_before - params.samples_after - 1
+                step = params.sample_rate//synthetic_rate
+                synthetic_times = params.samples_before + 1 + np.arange(start=0, stop=stop, step=step)
+                jittered_times = factory.generate.shift.jitter_events(synthetic_times, params.sample_rate,
+                                                                      params.jitter_factor, params.samples_before,
+                                                                      params.samples_after, params.num_samples)
+            else:
+                jittered_times = factory.generate.shift.jitter_events(unit_times, params.sample_rate,
+                                                                      params.jitter_factor, params.samples_before,
+                                                                      params.samples_after, params.num_samples)
             log("done", params.verbose)
 
-            if jittered_times is None:  # TODO: this is too restrictive; should just throw away times beyond the boundaries
-                continue
+            # sample artificial events with replacement
+            art_events = art_events[:, :, np.random.choice(art_events.shape[2], size=jittered_times.size)]
 
             # write to file
             log("Writing events to file", params.verbose, in_progress=True)
@@ -543,19 +577,19 @@ def generate_hybrid(args):
                     event_center = event_times[i]
                     event_samples = np.arange(event_center - params.samples_before,
                                               event_center + params.samples_after + 1, dtype=event_center.dtype)
-                    event_window = factory.io.spikegl.read_roi(target, unit_channels, event_samples)
+                    event_window = factory.io.raw.read_roi(target, unit_channels, event_samples)
 
                     subtracted_window = remove_spike(event_window, params)
-                    factory.io.spikegl.write_roi(target, unit_channels, event_samples, subtracted_window)
+                    factory.io.raw.write_roi(target, unit_channels, event_samples, subtracted_window)
 
                 # now add the shifted event
                 jittered_samples = np.arange(jittered_center - params.samples_before,
                                              jittered_center + params.samples_after + 1, dtype=jittered_center.dtype)
 
-                shifted_window = factory.io.spikegl.read_roi(target, shifted_channels, jittered_samples)
+                shifted_window = factory.io.raw.read_roi(target, shifted_channels, jittered_samples)
                 perturbed_data = shifted_window + art_events[:, :, i]
 
-                factory.io.spikegl.write_roi(target, shifted_channels, jittered_samples, perturbed_data)
+                factory.io.raw.write_roi(target, shifted_channels, jittered_samples, perturbed_data)
 
             log("done", params.verbose)
 

@@ -2,8 +2,6 @@
 
 import numpy as np
 
-import factory.io
-
 
 def threshold_events(windows, threshold):
     # compute mean spike and get channels by thresholding
@@ -18,7 +16,7 @@ def threshold_events(windows, threshold):
     return unit_channels
 
 
-def steinmetz(events, num_singular_values):
+def svd_generator(events, num_singular_values):  # adapted from https://github.com/cortex-lab/groundTruth
     """
 
     Parameters
