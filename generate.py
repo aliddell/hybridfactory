@@ -352,7 +352,7 @@ def unit_channels_union(unit_mask, params, probe):
     return unit_channels
 
 
-def scale_events(events, params, probe):
+def scale_events(events, params):
     """
 
     Parameters
@@ -361,8 +361,6 @@ def scale_events(events, params, probe):
         Tensor, num_channels x num_samples x num_events.
     params : module
         Session parameters.
-    probe : module
-        Probe parameters.
 
     Returns
     -------
@@ -447,15 +445,15 @@ def remove_spike(event_window, params):
     event_center = params.samples_before
 
     new_window = event_window.copy().astype(np.float64)
-    for i, window in enumerate(event_window):
+    for k, window in enumerate(event_window):
         wl, wr = _find_left_right(window, center=event_center)
 
         exes = np.hstack((np.arange(wl), np.arange(wr, window.size)))
         whys = window[exes]
         g = scipy.interpolate.interp1d(exes, whys, "cubic")
 
-        new_window[i, :] = g(np.arange(window.size))
-        new_window[i, wl:wr] += 3 * np.random.randn(wr - wl)
+        new_window[k, :] = g(np.arange(window.size))
+        new_window[k, wl:wr] += 3 * np.random.randn(wr - wl)
 
     return new_window
 
@@ -537,8 +535,7 @@ def generate_hybrid(args):
             else:
                 raise NotImplementedError(f"generator '{params.generator_type}' does not exist!")
 
-            art_events = scale_events(art_events, params, probe)
-
+            art_events = scale_events(art_events, params)
             log("done", params.verbose)
 
             # shift channels
