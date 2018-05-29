@@ -16,7 +16,7 @@ channel_map = np.hstack((np.arange(64), np.array([111, 110, 109, 108, 106, 107, 
                                                   113, 112]), np.arange(128, 256)))
 
 # reference channels
-refchans = np.hstack((np.arange(64), [99], np.arange(128, 256)))
+refchans = np.hstack((np.arange(64), np.arange(128, 256)))
 connected = ~np.isin(channel_map, refchans)
 
 # physical location of each channel on the probe
