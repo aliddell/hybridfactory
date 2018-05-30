@@ -23,6 +23,3 @@ connected = ~np.isin(channel_map, refchans)
 xcoords = np.hstack((np.repeat(np.nan, NCHANS//4), np.repeat([0, 250], NCHANS//8), np.repeat(np.nan, NCHANS//2)))
 ycoords = np.hstack((np.repeat(np.nan, NCHANS//4), np.tile(25*np.arange(32), 2), np.repeat(np.nan, NCHANS//2)))
 channel_positions = np.hstack((xcoords[:, np.newaxis], ycoords[:, np.newaxis]))  # NCHANS x 2
-
-# default amount to shift by
-default_shift = 4

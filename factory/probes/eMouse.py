@@ -22,6 +22,3 @@ xcoords = 20 * np.array([np.nan, np.nan, 1, 0, 0, 1, 0, 1, 0, 1, 0, 1, 0, 1, 0, 
 ycoords = 20 * np.array([np.nan, np.nan, 7, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16, 17, 17, 18, 18,
                          19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 24])
 channel_positions = np.hstack((xcoords[:, np.newaxis], ycoords[:, np.newaxis]))  # NCHANS x 2
-
-# default amount to shift by
-default_shift = 4
