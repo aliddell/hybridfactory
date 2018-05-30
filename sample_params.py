@@ -19,7 +19,9 @@ output_type = "phy"
 # probe layout
 probe_type = "eMouse"
 # indices (cluster labels) of ground-truth units
-ground_truth_units = [6, 17, 20, 26, 30, 36, 39, 57]
+ground_truth_units = [6, 17, 20, 36, 45, 57]
+# start time for ground-truth firing times
+start_time = 0
 
 # OPTIONAL PARAMETERS
 
@@ -29,20 +31,20 @@ random_seed = 10191
 generator_type = "svd_generator"
 # number of singular values to use in the construction of artificial units
 num_singular_values = 6
-# number of channels to shift the units by
-channel_shift = 4
+# number of channels to shift the units by, or None to select at random
+channel_shift = None
 # synthetic firing rate, in Hz, for hybrid units
-synthetic_rate = []
+synthetic_rate = [100, 150, 200, 250, 300, 350]
 # scale factor for randomly-generated jitter
-time_jitter = 500
+jitter_factor = 100
 # minimum amplitude scale factor
 amplitude_scale_min = 0.75
 # maximum_amplitude_scale_factor
-amplitude_scale_max = 2.
+amplitude_scale_max = 1.5
 # number of samples to take before an event timestep
-samples_before = 30
+samples_before = 40
 # number of samples to take after an event timestep
-samples_after = 30
+samples_after = 40
 # threshold a channel must exceed to be considered part of an event
 event_threshold = -30
 # point in the raw file at which the data starts

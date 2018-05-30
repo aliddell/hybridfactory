@@ -83,16 +83,17 @@ def _legal_params():
                        "output_type": ["kilosort", "phy", "jrc"],
                        "data_directory": None,
                        "probe_type": ["npix3a", "eMouse", "hh2_arseny"],
-                       "ground_truth_units": None}
+                       "ground_truth_units": None,
+                       "start_time": 0}
 
     optional_params = {"random_seed": None,
                        "generator_type": ["svd_generator"],
                        "num_singular_values": 6,
                        "channel_shift": None,  # depends on probe
                        "synthetic_rate": [],
-                       "jitter_factor": 500,
+                       "jitter_factor": 100,
                        "amplitude_scale_min": 0.75,
-                       "amplitude_scale_max": 2.,
+                       "amplitude_scale_max": 1.5,
                        "samples_before": 40,
                        "samples_after": 40,
                        "event_threshold": -30,
@@ -181,7 +182,7 @@ def load_params_probe(config):
 
         param_val = params.__dict__[param]
 
-        if required_params[param] is not None and param_val not in required_params[param]:
+        if hasattr(required_params[param], "__getitem__") and param_val not in required_params[param]:
             _err_exit(f"legal values for parameter '{param}' are: {', '.join(list(map(str, required_params[param])))}")
         elif param == "raw_source_file":
             rsf = glob.glob(param_val)
@@ -195,6 +196,11 @@ def load_params_probe(config):
             _err_exit(f"can't open data directory '{param_val}'")
         elif param == "ground_truth_units" and not hasattr(param_val, "__getitem__"):
             _err_exit(f"parameter '{param}' must be iterable")
+        elif param == "start_time" and param_val is not None:
+            if (not isinstance(param_val, int) or param_val < 0) and not hasattr(param_val, "__getitem__"):
+                _err_exit(f"parameter '{param}' must be a nonnegative integer, an iterable, or None")
+            elif hasattr(param_val, "__getitem__") and any([(not isinstance(s, int) or s < 0) for s in param_val]):
+                _err_exit(f"parameter '{param}', if iterable, must contain nonnegative integers")
 
     probe = importlib.import_module(f"factory.probes.{params.probe_type}")  # e.g., factory.probes.npix3a
 
@@ -204,11 +210,11 @@ def load_params_probe(config):
         elif param == "random_seed" and not hasattr(params, param):
             params.random_seed = np.random.randint(0, 2 ** 31)
         elif param == "channel_shift" and not hasattr(params, param):
-            params.channel_shift = probe.default_shift
+            params.channel_shift = None
 
         param_val = params.__dict__[param]
 
-        if param not in ("generator_type", "overwrite", "amplitude_scale_min",
+        if param not in ("generator_type", "overwrite", "amplitude_scale_min", "channel_shift",
                          "amplitude_scale_max", "synthetic_rate") and not isinstance(param_val, int):
             _err_exit(f"parameter '{param}' must be an integer")
         elif param in ("overwrite", "copy", "subtract") and not isinstance(param_val, bool):
@@ -217,12 +223,14 @@ def load_params_probe(config):
             _err_exit(f"parameter '{param}' must be a positive integer")
         elif param == "event_threshold" and param_val >= 0:
             _err_exit("parameter 'event_threshold' must be a negative integer")
-        elif param in ("random_seed", "channel_shift", "offset") and param_val < 0:
+        elif param in ("random_seed", "offset") and param_val < 0:
             _err_exit(f"parameter '{param}' must be a nonnegative integer")
         elif param.startswith("amplitude_scale") and param_val <= 0:
             _err_exit("parameter '{param}' must be a positive float")
         elif param == "firing_rate" and not hasattr(param_val, "__getitem__"):
             _err_exit(f"parameter '{param}' must be iterable")
+        elif param == "channel_shift" and param_val is not None and param_val < 0:
+            _err_exit(f"parameter '{param}' must be None or a nonnegative integer")
 
     if params.samples_before + params.samples_after + 1 <= np.count_nonzero(probe.connected):
         _err_exit("fewer samples than connected channels; increase samples_before, samples_after, or both")
@@ -262,7 +270,12 @@ def copy_source_target(params, probe):
         meta_file = re.sub(r"\.dat$", ".meta", params.raw_source_file)
 
     raw_source_files = glob.glob(params.raw_source_file)
-    start_times = factory.io.spikegl.get_start_times(meta_file)
+    if params.start_time is None:
+        start_times = factory.io.spikegl.get_start_times(meta_file)
+    elif not hasattr(params.start_time, "__getitem__"):
+        start_times = [params.start_time]
+    else:
+        start_times = params.start_time
 
     if len(raw_source_files) > 1:
         assert len(raw_source_files) == len(start_times)
