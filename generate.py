@@ -194,12 +194,12 @@ def load_params_probe(config):
             _err_exit("sample_rate must be a positive integer")
         elif param == "data_directory" and not op.isdir(param_val):
             _err_exit(f"can't open data directory '{param_val}'")
-        elif param == "ground_truth_units" and not hasattr(param_val, "__getitem__"):
+        elif param == "ground_truth_units" and not hasattr(param_val, "__len__"):
             _err_exit(f"parameter '{param}' must be iterable")
         elif param == "start_time" and param_val is not None:
-            if (not isinstance(param_val, int) or param_val < 0) and not hasattr(param_val, "__getitem__"):
+            if (not isinstance(param_val, int) or param_val < 0) and not hasattr(param_val, "__len__"):
                 _err_exit(f"parameter '{param}' must be a nonnegative integer, an iterable, or None")
-            elif hasattr(param_val, "__getitem__") and any([(not isinstance(s, int) or s < 0) for s in param_val]):
+            elif hasattr(param_val, "__len__") and any([(not isinstance(s, int) or s < 0) for s in param_val]):
                 _err_exit(f"parameter '{param}', if iterable, must contain nonnegative integers")
 
     probe = importlib.import_module(f"factory.probes.{params.probe_type}")  # e.g., factory.probes.npix3a
@@ -227,7 +227,7 @@ def load_params_probe(config):
             _err_exit(f"parameter '{param}' must be a nonnegative integer")
         elif param.startswith("amplitude_scale") and param_val <= 0:
             _err_exit("parameter '{param}' must be a positive float")
-        elif param == "firing_rate" and not hasattr(param_val, "__getitem__"):
+        elif param == "firing_rate" and not hasattr(param_val, "__len__"):
             _err_exit(f"parameter '{param}' must be iterable")
         elif param == "channel_shift" and param_val is not None and param_val < 0:
             _err_exit(f"parameter '{param}' must be None or a nonnegative integer")
