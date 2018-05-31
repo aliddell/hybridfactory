@@ -170,7 +170,21 @@ When we find the best matches in a 2 ms interval around each true firing, we can
 to see how we did.
 
 This functionality is not in `generate.py`, but should be used in a Jupyter notebook (for now).
+Adding a demo notebook is a TODO.
 
-Adding more validation tools is a TODO.
+Adding more validation tools is another TODO.
 Suggestions for tools you'd want to see are
 [always welcome](https://gitlab.com/vidriotech/spiegel/hybridfactory/issues).
+
+## Output
+
+If successful, `generate.py` will output two types of files:
+- `params.raw_target_file`, i.e., whatever you've specified in this parameter, **unless `params.raw_source_file` is a
+  glob.**
+  In this latter case, we generate your output files in the same location as your params.py, using the same naming
+  scheme as your source files, only prepending `.GT` before the file extension.
+- `firings_true.npy`.
+  This is a $`3 \times K`$ array of `uint64`, where $`K`$ is the number of events generated.
+  - Row 0 is the channel on which the event is centered, zero-based.
+  - Row 1 is the timestamp of the event in sample units, zero-based.
+  - Row 2 is the unit/cluster ID from the original data set for the event.
