@@ -5,7 +5,7 @@ import numpy as np
 # path to file containing raw source data (currently only SpikeGL-formatted data is supported)
 raw_source_file = r"C:\Users\Alan\Documents\Data\eMouse\sim_binary.dat"
 # path to file to contain hybrid data
-raw_target_file = r"C:\Users\Alan\Documents\Data\eMouse\sim_binary_GT.dat"
+raw_target_file = r"C:\Users\Alan\Documents\Data\eMouse\sim_binary.GT.dat"
 # start from an empty (+ noisy) file if True
 from_empty = True
 # type of raw data, as a numpy dtype
