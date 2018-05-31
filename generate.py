@@ -22,8 +22,6 @@ import factory.io.spikegl
 import factory.generate.shift
 import factory.generate.generators
 
-from factory.io.logging import log
-
 __author__ = "Alan Liddell <alan@vidriotech.com>"
 __version__ = "0.1.0-alpha"
 
@@ -45,6 +43,26 @@ def _commit_hash():
         os.chdir(old_wd)
 
     return ver_info
+
+
+def _log(msg, stdout, in_progress=False):
+    """
+
+    Parameters
+    ----------
+    msg : str
+        Message to log.
+    stdout : bool
+        Print to stdout if True.
+    in_progress : bool, optional
+        Print newline if and only if True.
+
+    """
+
+    end = " ... " if in_progress else "\n"
+
+    if stdout:
+        print(msg, end=end)
 
 
 def _err_exit(msg, status=1):
@@ -308,17 +326,17 @@ def copy_source_target(params, probe):
                 _err_exit("aborting", 0)
 
         if params.from_empty:
-            log(f"Laying down Gaussian noise in {raw_target_file}", params.verbose, in_progress=True)
+            _log(f"Laying down Gaussian noise in {raw_target_file}", params.verbose, in_progress=True)
             target = factory.io.raw.open_raw(raw_target_file, params.data_type, probe.NCHANS, mode="w+",
                                              offset=params.offset)
             factory.io.raw.lay_noise(target, 20, 65536)
             del target
 
-            log("done", params.verbose)
+            _log("done", params.verbose)
         elif params.copy:
-            log(f"Copying {raw_source_file} to {raw_target_file}", params.verbose, in_progress=True)
+            _log(f"Copying {raw_source_file} to {raw_target_file}", params.verbose, in_progress=True)
             shutil.copy2(raw_source_file, raw_target_file)
-            log("done", params.verbose)
+            _log("done", params.verbose)
 
         source = factory.io.raw.open_raw(raw_source_file, params.data_type, probe.NCHANS, mode="r",
                                          offset=params.offset)
@@ -493,11 +511,11 @@ def generate_hybrid(args):
 
     np.random.seed(params.random_seed)
 
-    log("Loading event times and cluster IDs", params.verbose, in_progress=True)
+    _log("Loading event times and cluster IDs", params.verbose, in_progress=True)
     io = importlib.import_module(f"factory.io.{params.output_type}")  # e.g., factory.io.phy, factory.io.kilosort, ...
     event_times = io.load_event_times(params.data_directory)
     event_clusters = io.load_event_clusters(params.data_directory)
-    log("done", params.verbose)
+    _log("done", params.verbose)
 
     # data for firings_true.npy
     gt_channels = []
@@ -516,11 +534,11 @@ def generate_hybrid(args):
                 falsify = np.random.choice(np.where(unit_mask)[0], size=num_events - SPIKE_LIMIT, replace=False)
                 unit_mask[falsify] = False
             elif num_events == 0:
-                log(f"No events found for unit {unit_id}", params.verbose)
+                _log(f"No events found for unit {unit_id}", params.verbose)
                 continue
 
             # generate artificial events for this unit
-            log(f"Generating ground truth for unit {unit_id}", params.verbose, in_progress=True)
+            _log(f"Generating ground truth for unit {unit_id}", params.verbose, in_progress=True)
 
             unit_times = event_times[unit_mask] - start_time
             unit_windows = factory.io.raw.unit_windows(source, unit_times, params.samples_before,
@@ -534,7 +552,7 @@ def generate_hybrid(args):
                 unit_channels = factory.generate.generators.threshold_events(unit_windows, params.event_threshold)
 
             if unit_channels is None:
-                log("no channels found for unit", params.verbose)
+                _log("no channels found for unit", params.verbose)
                 continue
 
             # now create subarray for just appropriate channels
@@ -543,26 +561,27 @@ def generate_hybrid(args):
             # actually generate the data
             if params.generator_type == "svd_generator":
                 if num_events < params.num_singular_values:
-                    log("not enough events to generate!", params.verbose)
+                    _log("not enough events to generate!", params.verbose)
                     continue
                 art_events = factory.generate.generators.svd_generator(events, params.num_singular_values)
             else:
                 raise NotImplementedError(f"generator '{params.generator_type}' does not exist!")
 
             art_events = scale_events(art_events, params)
-            log("done", params.verbose)
+            _log("done", params.verbose)
 
             # shift channels
-            log("Shifting channels", params.verbose, in_progress=True)
+            _log("Shifting channels", params.verbose, in_progress=True)
             shifted_channels = factory.generate.shift.shift_channels(unit_channels, params, probe)
 
             if shifted_channels is None:
-                continue  # cause is logged in `shift_channels`
+                _log("failed!", params.verbose)
+                continue
 
-            log("done", params.verbose)
+            _log("done", params.verbose)
 
             # jitter events
-            log("Jittering events", params.verbose, in_progress=True)
+            _log("Jittering events", params.verbose, in_progress=True)
             if params.synthetic_rate:
                 synthetic_rate = params.synthetic_rate[k]
                 stop = target.shape[1] - params.samples_before - params.samples_after - 1
@@ -575,13 +594,13 @@ def generate_hybrid(args):
                 jittered_times = factory.generate.shift.jitter_events(unit_times, params.sample_rate,
                                                                       params.jitter_factor, params.samples_before,
                                                                       params.samples_after, params.num_samples)
-            log("done", params.verbose)
+            _log("done", params.verbose)
 
             # sample artificial events with replacement
             art_events = art_events[:, :, np.random.choice(art_events.shape[2], size=jittered_times.size)]
 
             # write to file
-            log("Writing events to file", params.verbose, in_progress=True)
+            _log("Writing events to file", params.verbose, in_progress=True)
             for i, jittered_center in enumerate(jittered_times):
                 # first subtract the true event
                 if params.subtract:
@@ -602,7 +621,7 @@ def generate_hybrid(args):
 
                 factory.io.raw.write_roi(target, shifted_channels, jittered_samples, perturbed_data)
 
-            log("done", params.verbose)
+            _log("done", params.verbose)
 
             cc_indices = np.abs(art_events).max(axis=1).argmax(axis=0)
             center_channels = shifted_channels[cc_indices]
@@ -619,13 +638,13 @@ def generate_hybrid(args):
 
     # save ground-truth units for validation
     filename = factory.io.gt.save_gt_units(dirname, gt_channels, gt_times, gt_labels)
-    log(f"Firing times and labels saved to {filename}.", params.verbose)
+    _log(f"Firing times and labels saved to {filename}.", params.verbose)
 
     # save parameter file for later reuse
     timestamp = int(datetime.datetime.now().timestamp())
     filename = op.join(dirname, f"params-{timestamp}.py")
     _write_config(filename, params)
-    log(f"Parameter file to recreate this run saved at {filename}.", params.verbose)
+    _log(f"Parameter file to recreate this run saved at {filename}.", params.verbose)
 
 
 def main():

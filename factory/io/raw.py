@@ -110,7 +110,12 @@ def write_roi(target, channels, samples, data):
     assert isinstance(data, np.ndarray)
     assert data.shape == (channels.size, samples.size)
 
-    target[channels[:, np.newaxis], samples[np.newaxis, :]] = data
+    if len(channels.shape) == 1:
+        channels = channels[:, np.newaxis]
+    if len(samples.shape) == 1:
+        samples = samples[np.newaxis, :]
+
+    target[channels, samples] = data
 
 
 def unit_windows(source, unit_times, samples_before, samples_after, car_channels=None):
@@ -211,8 +216,11 @@ def lay_noise(target, scale, chunk_size):
     assert chunk_size > 0
 
     start, stop = 0, chunk_size
+    channels = np.arange(target.shape[0])
+
     while start < target.shape[1]:
-        target[:, start:stop] = np.random.normal(0, scale)
+        data = np.random.normal(0, scale, size=(channels.size, stop-start))
+        write_roi(target, channels, np.arange(start, stop), data)
 
         start += chunk_size
         stop = min(start + chunk_size, target.shape[1])

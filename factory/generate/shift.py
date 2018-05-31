@@ -5,7 +5,7 @@ from collections import OrderedDict
 import numpy as np
 import scipy.spatial
 
-from factory.io.logging import log
+import warnings
 
 
 def channel_coordinates(channels, probe):
@@ -103,7 +103,7 @@ def shift_channels(channels, params, probe):
     if params.channel_shift is None:
         shift_candidates = find_neighbors(channels, probe)
         if not shift_candidates:
-            log(f"could not find channels which replicate this spatial distribution", params.verbose)
+            warnings.warn(f"could not find channels which replicate this spatial distribution")
             return None
 
         # bias in favor of channels further out
@@ -122,14 +122,14 @@ def shift_channels(channels, params, probe):
     try:
         assert shifted_channels.min() > -1 and shifted_channels.max() < probe.channel_map.size
     except AssertionError:
-        log(f"channel shift of {params.channel_shift} places events outside of probe range", params.verbose)
+        warnings.warn(f"channel shift of {params.channel_shift} places events outside of probe range")
         return None
 
     # make sure our shifted channels don't land on unconnected channels
     try:
         assert np.intersect1d(shifted_channels, probe.channel_map[~probe.connected]).size == 0
     except AssertionError:
-        log(f"channel shift of {params.channel_shift} places events on unconnected channels", params.verbose)
+        warnings.warn(f"channel shift of {params.channel_shift} places events on unconnected channels")
         return None
 
     # make sure our shifted channels don't alter spatial relationships
@@ -139,7 +139,7 @@ def shift_channels(channels, params, probe):
     try:
         assert np.isclose(channel_distance, shifted_distance).all()
     except AssertionError:
-        log(f"channel shift of {params.channel_shift} alters spatial relationship between channels", params.verbose)
+        warnings.warn(f"channel shift of {params.channel_shift} alters spatial relationship between channels")
         return None
 
     return shifted_channels
