@@ -499,6 +499,7 @@ def generate_hybrid(args):
     event_clusters = io.load_event_clusters(params.data_directory)
     log("done", params.verbose)
 
+    # data for firings_true.npy
     gt_channels = []
     gt_times = []
     gt_labels = []
@@ -604,7 +605,7 @@ def generate_hybrid(args):
             log("done", params.verbose)
 
             cc_indices = np.abs(art_events).max(axis=1).argmax(axis=0)
-            center_channels = shifted_channels[cc_indices] + 1
+            center_channels = shifted_channels[cc_indices]
 
             gt_channels.append(center_channels)
             gt_times.append(jittered_times + start_time)
