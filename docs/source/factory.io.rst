@@ -52,6 +52,14 @@ factory.io.raw module
     :undoc-members:
     :show-inheritance:
 
+factory.io.spikegl module
+-------------------------
+
+.. automodule:: factory.io.spikegl
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 
 Module contents
 ---------------
