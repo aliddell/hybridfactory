@@ -88,40 +88,38 @@ See [sample_params.py](https://gitlab.com/vidriotech/spiegel/hybridfactory/blob/
 
 ### Required parameters
 
+- `data_directory`: Directory containing output from your spike sorter, e.g., `rez.mat` or `*.npy` for KiloSort;
+  or `*_jrc.mat` and `*_spk(raw|wav|fet).jrc` for JRCLUST.
 - `raw_source_file`: Path to file containing raw source data (currently only SpikeGL-formatted data is supported).
   This can also be a [glob](https://en.wikipedia.org/wiki/Glob_%28programming%29) if you have multiple data files.
-- `raw_target_file`: Path to file which will contain hybrid data.
-  If you use a glob in `raw_source_file`, this will be ignored and hybrid data will be created in the folder containing
-   `params.py` and with a similar name scheme as the source data.
-   The only difference is a `.GT` just before the file extension.
-- `from_empty`: Whether or not to start from an empty file (with some Gaussian background noise).
-  If you just want your ground-truth units without any other events in the background, set this to True. 
 - `data_type`: Type of raw data, as a [NumPy data type](https://docs.scipy.org/doc/numpy/user/basics.types.html).
   As of this writing, I have only seen `int16`.
 - `sample_rate`: Sample rate of the source data, in Hz.
-- `data_directory`: Directory containing output from your spike sorter, e.g., `rez.mat` or `*.npy` for KiloSort;
-  or `*_jrc.mat` and `*_spk(raw|wav|fet).jrc` for JRCLUST.
-- `output_type`: Type of output from your spike sorter.
-  One of "phy" (for `*.npy`), "kilosort" (for `rez.mat`), or "jrc" (for `*_jrc.mat` and `*_spk(raw|wav|fet).jrc`).
+- `ground_truth_units`: Indices (i.e., cluster labels) of ground-truth units from your spike sorter's output.
+- `start_time`: Start time of data file in sample units.
+  Nonnegative integer if `raw_source_file` is a single file, iterable of nonnegative integers if you have a globbed
+  `raw_source_file`.
+  If you have SpikeGL meta files, you can use `factory.io.spikegl.get_start_times` to get these automagically.
+  
+### Probe configuration
+
 - `probe_type`: Probe layout.
   One of "npix3a" (for [Neuropixels Phase 3A](https://github.com/cortex-lab/neuropixels/wiki/About_Neuropixels)),
   "hh2_arseny" (for
   [this JRCLUST probe layout](https://github.com/JaneliaSciComp/JRCLUST/blob/master/prb/hh2_arseny.prb)), or "eMouse"
   (for the synthetic [eMouse](https://github.com/cortex-lab/KiloSort/tree/master/eMouse) example data from KiloSort).
-- `ground_truth_units`: Indices (i.e., cluster labels) of ground-truth units from your spike sorter's output.
-  Zero-indexed.
-- `start_time`: Start time of data file in sample units.
-  Nonnegative integer if `raw_source_file` is a single file, iterable of nonnegative integers if you have a globbed
-  `raw_source_file`.
-  Can also be `None` if you have meta files named similarly to your data files.
 
 ### Optional parameters
 
 - `random_seed`: Nonnegative integer in the range $`[0, 2^{31})`$.
   Because this algorithm is randomized, setting a random seed allows for reproducible output.
   The default is itself randomly generated, but will be output in a `params-[TIMESTAMP].py` on successful completion.
-- `generator_type`: Algorithm used to construct the artificial events.
-  By default, we use a variant of [this approach](https://github.com/cortex-lab/groundTruth).
+- `output_directory`: Path to directory which will contain hybrid data.
+  (This includes raw data files and annotations.)
+  Defaults to "`data_directory`/hybrid_output".
+- `output_type`: Type of output from your spike sorter.
+  One of "phy" (for `*.npy`), "kilosort" (for `rez.mat`), or "jrc" (for `*_jrc.mat` and `*_spk(raw|wav|fet).jrc`).
+  Will be inferred from `data_directory` if not specified.
 - `num_singular_values`: Number of singular values to use in the construction of artificial events.
   Default is 6.
 - `channel_shift`: Number of channels to shift artificial events up or down from their source.
@@ -133,25 +131,20 @@ See [sample_params.py](https://gitlab.com/vidriotech/spiegel/hybridfactory/blob/
 - `time_jitter`: Scale factor for (normally-distributed) random time shift, in sample units.
   Default is 100.
 - `amplitude_scale_min`: Minimum factor for (uniformly-distributed) random amplitude scaling, in percentage units.
-  Default is 0.75.
-- `amplitude_scale_min`: Maximum factor for (uniformly-distributed) random amplitude scaling, in percentage units.
-  Default is 1.5.
+  Default is 1.
+- `amplitude_scale_max`: Maximum factor for (uniformly-distributed) random amplitude scaling, in percentage units.
+  Default is 1.
 - `samples_before`: Number of samples to take before an event timestep for artificial event construction.
   Default is 40.
 - `samples_after`: Number of samples to take after an event timestep for artificial event construction.
   Default is 40.
 - `event_threshold`: Negative threshold a channel must exceed to be considered part of an event.
   Default is -30.
-- `offset`: Point in the raw file at which the data starts.
-  Default is 0.
 - `copy`: Whether or not to copy the source file to the target.
   You usually want to do this, but if the file is large and you know where your data has been perturbed, you could use
   [`reset_target`](https://gitlab.com/vidriotech/spiegel/hybridfactory/blob/master/factory/io/raw.py#L102) instead.
   Default is False.
-- `overwrite`: Whether or not to overwrite a target file if it already exists.
-  If this is False, you will be prompted.
-  Default is False.
-- `subtract`: Whether or not to try to remove your ground-truth units from their original locations before you shift
+- `erase`: Whether or not to try to remove your ground-truth units from their original locations before you shift
   them.
   This is an experimental feature, and may leave artifacts.
   Default is False. 

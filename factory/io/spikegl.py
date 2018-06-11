@@ -1,6 +1,7 @@
 # Copyright (C) 2018 Vidrio Technologies. All rights reserved.
 
 import glob
+from os import path as op
 import re
 
 import numpy as np
@@ -17,7 +18,7 @@ def _natsort(strings):
 
 
 def get_start_times(filename):
-    """
+    """Load start times from a SpikeGL meta file (or glob of same).
 
     Parameters
     ----------
@@ -35,11 +36,19 @@ def get_start_times(filename):
             lines = [l.strip() for l in fh.readlines()]
             start_time = [int(re.split(r"\s*=\s*", l)[1]) for l in lines if l.lower().startswith("firstsample")]
             if len(start_time) < 1:
-                raise ValueError(f"file {fn} does not have a firstSample field")
+                raise IOError(f"file {fn} does not have a firstSample field")
 
         return start_time[0]
 
-    filenames = glob.glob(filename)
+    if isinstance(filename, str):
+        filenames = glob.glob(filename)
+        if not filenames:
+            raise IOError(f"no such file or bad glob: {filename}")
+    elif hasattr(filename, "__iter__"):
+        filenames = list(filename)
+        if not all([op.isfile(fn) for fn in filenames]):
+            raise IOError("missing files")
+
     sorted_files = _natsort(filenames)
 
     # get absolute start time
