@@ -354,7 +354,7 @@ def load_jrc_features(dirname):
     prefix = _jrc_prefix(dirname)  # handles assertions for us
     filename = op.join(dirname, f"{prefix}_spkfet.jrc")
     dims = tuple(_read_matlab(op.join(dirname, f"{prefix}_jrc.mat"), "dimm_fet", flatten=True).astype(np.int32))
-    dtype = np.int16
+    dtype = np.float32
 
     return _read_jrc(filename, dims, dtype)
 
