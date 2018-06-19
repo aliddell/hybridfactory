@@ -84,7 +84,7 @@ If you find something a little more subtle, please post an issue on the
 Rather than pass a bunch of flags and arguments to `generate.py`, we have collected all the parameters in a
 parameter file, `params.py`.
 We briefly explain each option below.
-See [sample_params.py](https://gitlab.com/vidriotech/spiegel/hybridfactory/blob/master/sample_params.py) for an example.
+See [params_example.py](https://gitlab.com/vidriotech/spiegel/hybridfactory/blob/master/params_example.py) for an example.
 
 ### Required parameters
 
