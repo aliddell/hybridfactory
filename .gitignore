@@ -7,6 +7,11 @@ __pycache__/
 # built documentation
 docs/build
 
+# setuptools output
+build/
+dist/
+*.egg-info
+
 # hybrid demo folders
 notebooks/demos/*_demo/
 

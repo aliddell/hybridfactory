@@ -14,25 +14,24 @@ import traceback
 
 import numpy as np
 
-import factory.data.annotation
-import factory.data.dataset
-import factory.io.spikegl
-import factory.generate.generator
-from factory.generate.generator import NoEventException, RankDeficientException
-from factory.probes.probe import Probe
+import hybridfactory.data.annotation
+import hybridfactory.data.dataset
+import hybridfactory.io.spikegl
+import hybridfactory.generate.generator
+from hybridfactory.generate.generator import NoEventException, RankDeficientException
+from hybridfactory.probes.probe import Probe
 
 __author__ = "Alan Liddell <alan@vidriotech.com>"
 __version__ = "0.1.0-beta"
 
 SPIKE_LIMIT = 25000
 
-
 def _commit_hash():
     import os
     import subprocess
 
     old_wd = os.getcwd()
-    os.chdir(op.dirname(__file__))
+    os.chdir(op.dirname(op.dirname(__file__)))
 
     try:
         ver_info = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], universal_newlines=True).strip()
@@ -148,7 +147,7 @@ def _write_config(filename, params):
 
     with open(filename, "w") as fh:
         print("import numpy as np", file=fh)
-        print("from factory.probes import custom_probe\n", file=fh)
+        print("from hybridfactory.probes import custom_probe\n", file=fh)
 
         print("# REQUIRED PARAMETERS\n", file=fh)
         for param in required_params:
@@ -317,7 +316,7 @@ def generate_hybrid(args):
     # load up the source data set
     _log("Loading source dataset", params.verbose, in_progress=True)
     try:
-        source = factory.data.dataset.new_annotated_dataset(filename=params.raw_source_file,
+        source = hybridfactory.data.dataset.new_annotated_dataset(filename=params.raw_source_file,
                                                             dtype=params.data_type,
                                                             sample_rate=params.sample_rate,
                                                             probe=probe,
@@ -333,7 +332,7 @@ def generate_hybrid(args):
     # create the hybrid data set
     _log("Creating target dataset", params.verbose, in_progress=True)
     try:
-        target = factory.data.dataset.new_hybrid_dataset(source, output_directory=params.output_directory,
+        target = hybridfactory.data.dataset.new_hybrid_dataset(source, output_directory=params.output_directory,
                                                          copy=params.copy, create=True, transform=None)
     except (TypeError, ValueError) as err:
         _err_exit(f"Error: {str(err)}")
@@ -343,7 +342,7 @@ def generate_hybrid(args):
     target.open_raw("r+")
 
     # create the hybrid data generator
-    generator = factory.generate.generator.SVDGenerator(dataset=target,
+    generator = hybridfactory.generate.generator.SVDGenerator(dataset=target,
                                                         event_threshold=params.event_threshold,
                                                         samples_before=params.samples_before,
                                                         samples_after=params.samples_after)
@@ -432,7 +431,7 @@ def generate_hybrid(args):
     dirname = params.output_directory
     session = params.session_name
 
-    factory.data.dataset.save_dataset(target, dirname, session)
+    hybridfactory.data.dataset.save_dataset(target, dirname, session)
 
     # also save firings matrix
     target.export_ground_truth_matrix(op.join(dirname, f"firings_true.npy"))
@@ -473,7 +472,7 @@ if __name__ == "__main__":
         main()
     except Exception as e:
         err_msg = f"""A wild BUG appeared!
-        
+
 Please send the following output to {__author__}:
 
 Version info/commit hash:

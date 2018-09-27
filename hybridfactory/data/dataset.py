@@ -11,9 +11,9 @@ import shutil
 import numpy as np
 import pandas as pd
 
-import factory.data.annotation
-from factory.probes.probe import Probe, save_probe, load_probe
-from factory.io.spikegl import get_start_times
+import hybridfactory.data.annotation
+from hybridfactory.probes.probe import Probe, save_probe, load_probe
+from hybridfactory.io.spikegl import get_start_times
 
 
 class DataSet(object):
@@ -583,19 +583,19 @@ def new_annotated_dataset(filename, dtype, sample_rate, probe, ann_location=None
         start_times = [0]
 
     if ann_format == "phy":
-        annotations = factory.data.annotation.load_phy(ann_location)
+        annotations = hybridfactory.data.annotation.load_phy(ann_location)
     elif ann_format == "kilosort":
-        annotations = factory.data.annotation.load_kilosort(ann_location)
+        annotations = hybridfactory.data.annotation.load_kilosort(ann_location)
     elif ann_format == "jrc":
-        annotations = factory.data.annotation.load_jrc(ann_location)
+        annotations = hybridfactory.data.annotation.load_jrc(ann_location)
     else:  # try to infer the annotation format
         ls = os.listdir(ann_location)
         if "spike_times.npy" in ls and "spike_templates.npy" in ls and "spike_clusters.npy" in ls:
-            annotations = factory.data.annotation.load_phy(ann_location)
+            annotations = hybridfactory.data.annotation.load_phy(ann_location)
         elif "rez.mat" in ls:
-            annotations = factory.data.annotation.load_kilosort(ann_location)
+            annotations = hybridfactory.data.annotation.load_kilosort(ann_location)
         elif any([f.endswith("_jrc.mat") for f in ls]):
-            annotations = factory.data.annotation.load_jrc(ann_location)
+            annotations = hybridfactory.data.annotation.load_jrc(ann_location)
         else:
             raise ValueError("cannot locate any annotations")
 

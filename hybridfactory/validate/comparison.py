@@ -7,8 +7,8 @@ from os import path as op
 import numpy as np
 import pandas as pd
 
-from factory.data.annotation import load_kilosort_templates
-from factory.data.dataset import AnnotatedDataSet, HybridDataSet
+from hybridfactory.data.annotation import load_kilosort_templates
+from hybridfactory.data.dataset import AnnotatedDataSet, HybridDataSet
 
 
 class PairComparison(object):

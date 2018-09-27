@@ -4,7 +4,7 @@ import os
 from os import path as op
 import sys
 
-import factory.probes
+import hybridfactory.probes
 
 home = os.getenv("USERPROFILE") if sys.platform == "win32" else os.getenv("HOME")
 
@@ -26,7 +26,7 @@ start_time = 0
 # PROBE CONFIGURATION
 
 # a probe object; use a prebuilt probe or roll your own
-probe = factory.probes.eMouse()
+probe = hybridfactory.probes.eMouse()
 
 # OPTIONAL PARAMETERS
 

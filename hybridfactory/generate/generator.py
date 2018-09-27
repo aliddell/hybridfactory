@@ -10,7 +10,7 @@ import scipy.interpolate
 import scipy.spatial
 import scipy.stats
 
-from factory.data.dataset import HybridDataSet
+from hybridfactory.data.dataset import HybridDataSet
 
 
 class HybridEventGenerator(object):
