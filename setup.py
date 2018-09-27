@@ -21,7 +21,7 @@ setuptools.setup(
     ],
     entry_points={
         "console_scripts": [
-            "generate = hybridfactory.utils.cli:main"
+            "hybridfactory = hybridfactory.utils.cli:main"
         ]
     }
 )
