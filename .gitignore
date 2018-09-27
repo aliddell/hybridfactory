@@ -18,3 +18,8 @@ notebooks/demos/*_demo/
 # program output
 *.npy
 params-*.py
+
+# testing
+.env
+.coverage
+.coveragerc

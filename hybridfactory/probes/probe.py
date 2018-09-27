@@ -13,9 +13,9 @@ class Probe(object):
 
         Parameters
         ----------
-        channel_map :
-        connected :
-        positions :
+        channel_map : numpy.ndarray
+        connected : numpy.ndarray
+        positions : numpy.ndarray
         name : str, optional
         """
         if not isinstance(channel_map, np.ndarray):
@@ -86,7 +86,7 @@ class Probe(object):
             raise TypeError("channel_map must be a NumPy array")
         elif not np.issubdtype(val.dtype, np.integer):
             raise ValueError("channel_map must be an integer type")
-        elif np.ravel(val).ndim != 1:
+        elif np.squeeze(val).ndim != 1:
             raise ValueError("channel_map must be 1-dimensional")
         elif val.size != self.num_channels:
             raise ValueError("assignment cannot alter number of channels")
@@ -104,7 +104,7 @@ class Probe(object):
             raise TypeError("connected must be a NumPy array")
         elif not np.issubdtype(val.dtype, np.bool_):
             raise ValueError("connected must be a boolean type")
-        elif np.ravel(val).ndim != 1:
+        elif np.squeeze(val).ndim != 1:
             raise ValueError("connected must be 1-dimensional")
         elif val.size != self.num_channels:
             raise ValueError("assignment cannot alter number of channels")
@@ -186,8 +186,8 @@ class Probe(object):
         -------
         channels : numpy.ndarray
         """
-        assert coords[:, 0].min() >= 0 and coords[:, 0].max() <= self._channel_positions[:, 0].max()
-        assert coords[:, 1].min() >= 0 and coords[:, 1].max() <= self._channel_positions[:, 1].max()
+        assert coords[:, 0].min() >= 0 and coords[:, 0].max() <= self.connected_positions()[:, 0].max()
+        assert coords[:, 1].min() >= 0 and coords[:, 1].max() <= self.connected_positions()[:, 1].max()
 
         channels = np.zeros(coords.shape[0], dtype=self._channel_map.dtype)
 
@@ -294,7 +294,7 @@ def custom_probe(channel_map, connected, channel_positions, name="Custom"):
     return Probe(channel_map, connected, channel_positions, name)
 
 
-def neuropixels3a():
+def neuropixels3a(sync_channel=True):
     """Create and return a Neuropixels Phase 3A probe.
 
     (See https://github.com/cortex-lab/neuropixels/wiki/About_Neuropixels for details.)
@@ -303,7 +303,7 @@ def neuropixels3a():
     -------
     probe : Probe
     """
-    num_channels = 385  # 384 channels + sync channel
+    num_channels = 384 + int(sync_channel)  # 384 channels + sync channel
 
     # the full channel map for the Neuropixels Phase 3A array
     channel_map = np.arange(num_channels)
@@ -313,9 +313,11 @@ def neuropixels3a():
     connected = ~np.isin(channel_map, refchans)
 
     # physical location of each channel on the probe
-    xcoords = np.hstack((np.tile([43, 11, 59, 27], (num_channels - 1) // 4), np.nan))  # 43 11 59 27 43 11 59 27 ...
-    ycoords = 20 * np.hstack((np.repeat(1 + np.arange((num_channels - 1) // 2), 2), np.nan))  # 20 20 40 40 ... 3820 3820 3840 3840
+    xcoords = np.hstack((np.tile([43, 11, 59, 27], num_channels // 4)))  # 43 11 59 27 43 11 59 27 ...
+    ycoords = 20 * np.hstack((np.repeat(1 + np.arange(num_channels // 2), 2)))  # 20 20 40 40 ... 3820 3820 3840 3840
     channel_positions = np.hstack((xcoords[:, np.newaxis], ycoords[:, np.newaxis]))
+    if sync_channel:
+        channel_positions = np.vstack((channel_positions, np.nan*np.ones((1,2))))
 
     return Probe(channel_map, connected, channel_positions, name="Neuropixels Phase 3A")
 
@@ -329,9 +331,9 @@ def eMouse():
     -------
     probe : Probe
     """
-    channel_map = np.array(
-            [32, 33, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27, 29, 31, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24,
-             26, 28, 30, 0, 1, 2, 3, 4, 5], dtype=np.int64)
+    channel_map = np.array([32, 33, 7, 9, 11, 13, 15, 17, 19, 21, 23, 25, 27,
+                            29, 31, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24,
+                            26, 28, 30, 0, 1, 2, 3, 4, 5], dtype=np.int64)
 
     # reference channels
     refchans = np.array([32, 33])
@@ -372,7 +374,7 @@ def load_probe(filename):
 
     Parameters
     ----------
-    filename :
+    filename : str
 
     Returns
     -------

@@ -26,6 +26,7 @@ __version__ = "0.1.0-beta"
 
 SPIKE_LIMIT = 25000
 
+
 def _commit_hash():
     import os
     import subprocess
@@ -439,12 +440,12 @@ def generate_hybrid(args):
     _log(f"Session information saved in {dirname}.", params.verbose)
 
     # save parameter file for later reuse
-    filename = op.join(dirname, f"params_{session}.py")
+    filename = op.join(dirname, f"hfparams_{session}.py")
     _write_config(filename, params)
     _log(f"Parameter file to recreate this run saved at {filename}.", params.verbose)
 
 
-def main():
+def _main():
     parser = argparse.ArgumentParser(description="Generate some hybrid data.")
 
     subparsers = parser.add_subparsers(title="optional commands")
@@ -466,19 +467,20 @@ def main():
     args.func(args)
 
 
-if __name__ == "__main__":
-    # noinspection PyBroadException
-    try:
-        main()
-    except Exception as e:
-        err_msg = f"""A wild BUG appeared!
+def main():
+    if __name__ == "__main__":
+        # noinspection PyBroadException
+        try:
+            _main()
+        except Exception as e:
+            err_msg = f"""This looks like a bug!
 
-Please send the following output to {__author__}:
+    Please send the following output to {__author__}:
 
-Version info/commit hash:
-    {_commit_hash()}
-Error:
-    {str(e)}
-Traceback:
-    {traceback.format_exc()}"""
-        _err_exit(err_msg)
+    Version info/commit hash:
+        {_commit_hash()}
+    Error:
+        {str(e)}
+    Traceback:
+        {traceback.format_exc()}"""
+            _err_exit(err_msg)
