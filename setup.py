@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="hybridfactory",
-    version="0.1.2",
+    version="0.1.0-beta",
     packages=setuptools.find_packages(),
     url="https://gitlab.com/vidriotech/spiegel/hybridfactory",
     license="",
