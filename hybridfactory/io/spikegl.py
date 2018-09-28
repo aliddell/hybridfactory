@@ -7,18 +7,8 @@ import re
 import numpy as np
 
 
-def _natsort(strings):
-    ttime = re.compile(r"_t(\d+)\.")
-
-    def _natkey(term):
-        res = ttime.search(term)
-        return int(res.group(1)) if res is not None else term
-
-    return sorted(strings, key=_natkey)
-
-
 def get_start_times(filename):
-    """Load start times from a SpikeGL meta file (or glob of same).
+    """Load start times (in units of samples) from a SpikeGL meta file (or glob of same).
 
     Parameters
     ----------
@@ -31,14 +21,25 @@ def get_start_times(filename):
         Start times in order of glob expansion, zero-indexed.
 
     """
+    def _natsort(strings): # natural sort
+        ttime = re.compile(r"_t(\d+)\.")
+
+        def _natkey(term):
+            res = ttime.search(term)
+            return int(res.group(1)) if res is not None else term
+
+        return sorted(strings, key=_natkey)
+
     def _find_start(fn):
         with open(fn, "r") as fh:
-            lines = [l.strip() for l in fh.readlines()]
-            start_time = [int(re.split(r"\s*=\s*", l)[1]) for l in lines if l.lower().startswith("firstsample")]
-            if len(start_time) < 1:
+            line = fh.readline().strip()
+            while line and not line.lower().startswith("firstsample"):
+                line = fh.readline().strip()
+
+            if not line:
                 raise IOError(f"file {fn} does not have a firstSample field")
 
-        return start_time[0]
+        return int(re.split(r"\s*=\s*", line)[1])
 
     if isinstance(filename, str):
         filenames = glob.glob(filename)

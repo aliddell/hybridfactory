@@ -2,6 +2,7 @@ from context import *
 
 from hybridfactory import probes
 
+
 class TestEmouse:
     def setup(self):
         self.probe = probes.eMouse()
