@@ -171,12 +171,12 @@ def load_kilosort(dirname):
 
 
 def load_phy(dirname):
-    """Load a Phy-compatible sorting from *.npy files.
+    """Load a Phy-compatible sorting from `*.npy` files.
 
     Parameters
     ----------
     dirname : str
-        Path to directory containing Phy-compatible input (*.npy).
+        Path to directory containing Phy-compatible input (`*.npy`).
 
     Returns
     -------
@@ -214,7 +214,7 @@ def load_jrc(dirname, consolidate=True):
     Parameters
     ----------
     dirname : str
-        Path to directory containing JRCLUST output (*_jrc.mat, *.jrc).
+        Path to directory containing JRCLUST output (`*_jrc.mat`, `*.jrc`).
     consolidate : bool
         Consolidate all negative cluster IDs into -1 if True.
 
@@ -299,7 +299,7 @@ def load_jrc_raw(dirname):
     Parameters
     ----------
     dirname : str
-        Path to directory containing JRCLUST output (*_jrc.mat, *.jrc).
+        Path to directory containing JRCLUST output (`*_jrc.mat`, `*.jrc`).
 
     Returns
     -------
@@ -321,7 +321,7 @@ def load_jrc_filtered(dirname):
     Parameters
     ----------
     dirname : str
-        Path to directory containing JRCLUST output (*_jrc.mat, *.jrc).
+        Path to directory containing JRCLUST output (`*_jrc.mat`, `*.jrc`).
 
     Returns
     -------
@@ -343,7 +343,7 @@ def load_jrc_features(dirname):
     Parameters
     ----------
     dirname : str
-        Path to directory containing JRCLUST output (*_jrc.mat, *.jrc).
+        Path to directory containing JRCLUST output (`*_jrc.mat`, `*.jrc`).
 
     Returns
     -------
