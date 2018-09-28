@@ -10,6 +10,6 @@ $anaconda="$env:HOMEPATH\Anaconda3\envs\hybridfactory\Scripts\"
 
 Set-Location "$projectdir"
 
-& "$anaconda\py.test.exe" --cov-conf test\.coveragerc --cov=hybridfactory test\
+& "$anaconda\py.test.exe" -s --cov-conf test\.coveragerc --cov=hybridfactory test\
 
 Set-Location "$cwd"
