@@ -128,7 +128,7 @@ def _jrc_prefix(dirname):
     return matfiles[0][:-8]
 
 
-def load_kilosort(dirname):
+def kilosort_from_rez(dirname, rezfile="rez.mat"):
     """Load a KiloSort sorting from rez.mat.
 
     Parameters
@@ -143,9 +143,9 @@ def load_kilosort(dirname):
     """
 
     assert op.isdir(dirname)
-    assert "rez.mat" in os.listdir(dirname)
+    assert rezfile in os.listdir(dirname)
 
-    filename = op.join(dirname, "rez.mat")
+    filename = op.join(dirname, rezfile)
     st3 = _read_matlab(filename, "rez/st3")
 
     # times and template IDs are zero-based since they serve as indices into data
@@ -170,7 +170,7 @@ def load_kilosort(dirname):
                                           ("template", event_templates)]))
 
 
-def load_phy(dirname):
+def kilosort_from_phy(dirname):
     """Load a Phy-compatible sorting from `*.npy` files.
 
     Parameters
@@ -194,7 +194,7 @@ def load_phy(dirname):
     event_templates = _read_npy(op.join(dirname, "spike_templates.npy"), flatten=True).astype(np.int64)
 
     # cluster IDs are not indices, so can be one-based
-    event_clusters = _read_npy(op.join(dirname, "spike_clusters.npy"), flatten=True).astype(np.int64)
+    event_clusters = _read_npy(op.join(dirname, "spike_clusters.npy"), flatten=True).astype(np.int64) + 1
 
     # sanity check
     assert (event_times == np.sort(event_times)).all()
@@ -208,7 +208,7 @@ def load_phy(dirname):
                                           ("template", event_templates)]))
 
 
-def load_jrc(dirname, consolidate=True):
+def jrclust_from_matfile(dirname, matfile=None, consolidate=True):
     """Load a JRCLUST sorting.
 
     Parameters
@@ -224,7 +224,11 @@ def load_jrc(dirname, consolidate=True):
         Zero-based timesteps, integer cluster IDs, zero-based channel indices.
     """
 
-    prefix = _jrc_prefix(dirname)  # handles assertions for us
+    if matfile is None:
+        prefix = _jrc_prefix(dirname)  # handles assertions for us
+    else:
+        prefix = op.basename(matfile).replace("_jrc.mat", "")
+
     filename = op.join(dirname, f"{prefix}_jrc.mat")
 
     # times and channel indices are zero-based since they serve as indices into data

@@ -583,19 +583,19 @@ def new_annotated_dataset(filename, dtype, sample_rate, probe, ann_location=None
         start_times = [0]
 
     if ann_format == "phy":
-        annotations = hybridfactory.data.annotation.load_phy(ann_location)
+        annotations = hybridfactory.data.annotation.kilosort_from_phy(ann_location)
     elif ann_format == "kilosort":
-        annotations = hybridfactory.data.annotation.load_kilosort(ann_location)
+        annotations = hybridfactory.data.annotation.kilosort_from_rez(ann_location)
     elif ann_format == "jrc":
-        annotations = hybridfactory.data.annotation.load_jrc(ann_location)
+        annotations = hybridfactory.data.annotation.jrclust_from_matfile(ann_location)
     else:  # try to infer the annotation format
         ls = os.listdir(ann_location)
         if "spike_times.npy" in ls and "spike_templates.npy" in ls and "spike_clusters.npy" in ls:
-            annotations = hybridfactory.data.annotation.load_phy(ann_location)
+            annotations = hybridfactory.data.annotation.kilosort_from_phy(ann_location)
         elif "rez.mat" in ls:
-            annotations = hybridfactory.data.annotation.load_kilosort(ann_location)
+            annotations = hybridfactory.data.annotation.kilosort_from_rez(ann_location)
         elif any([f.endswith("_jrc.mat") for f in ls]):
-            annotations = hybridfactory.data.annotation.load_jrc(ann_location)
+            annotations = hybridfactory.data.annotation.jrclust_from_matfile(ann_location)
         else:
             raise ValueError("cannot locate any annotations")
 
