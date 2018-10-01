@@ -59,7 +59,7 @@ This tool is primarily a command-line utility.
 Provided you have a [parameter file](#parameter-file), you can invoke it like so:
 
 ```bash
-$ /path/to/python3 generate.py generate /path/to/params.py
+(hybridfactory) $ hybridfactory generate /path/to/params.py
 ```
 
 Right now, `generate` is the only command available, allowing you to generate hybrid data from a pre-existing raw
@@ -90,17 +90,17 @@ See [params_example.py](https://gitlab.com/vidriotech/spiegel/hybridfactory/blob
 
 - `data_directory`: Directory containing output from your spike sorter, e.g., `rez.mat` or `*.npy` for KiloSort;
   or `*_jrc.mat` and `*_spk(raw|wav|fet).jrc` for JRCLUST.
-- `raw_source_file`: Path to file containing raw source data (currently only SpikeGL-formatted data is supported).
+- `raw_source_file`: Path to file containing raw source data (currently only SpikeGL[X]-formatted data is supported).
   This can also be a [glob](https://en.wikipedia.org/wiki/Glob_%28programming%29) if you have multiple data files.
 - `data_type`: Type of raw data, as a [NumPy data type](https://docs.scipy.org/doc/numpy/user/basics.types.html).
-  As of this writing, I have only seen `int16`.
+  (I have only seen `int16`.)
 - `sample_rate`: Sample rate of the source data, in Hz.
 - `ground_truth_units`: Indices (i.e., cluster labels) of ground-truth units from your spike sorter's output.
-- `start_time`: Start time of data file in sample units.
+- `start_time`: Start time of recording in data file (in sample units).
   Nonnegative integer if `raw_source_file` is a single file, iterable of nonnegative integers if you have a globbed
   `raw_source_file`.
-  If you have SpikeGL meta files, you can use `factory.io.spikegl.get_start_times` to get these automagically.
-  
+  If you have SpikeGL meta files, you can use `hybridfactory.io.spikegl.get_start_times` to get these automagically.
+
 ### Probe configuration
 
 - `probe_type`: Probe layout.
@@ -142,12 +142,12 @@ See [params_example.py](https://gitlab.com/vidriotech/spiegel/hybridfactory/blob
   Default is -30.
 - `copy`: Whether or not to copy the source file to the target.
   You usually want to do this, but if the file is large and you know where your data has been perturbed, you could use
-  [`reset_target`](https://gitlab.com/vidriotech/spiegel/hybridfactory/blob/master/factory/io/raw.py#L102) instead.
+  [`reset_target`](https://gitlab.com/vidriotech/spiegel/hybridfactory/blob/master/hybridfactory/io/raw.py#L102) instead.
   Default is False.
 - `erase`: Whether or not to try to remove your ground-truth units from their original locations before you shift
   them.
   This is an experimental feature, and may leave artifacts.
-  Default is False. 
+  Default is False.
 
 ## Validation tools
 
@@ -155,11 +155,11 @@ For KiloSort output, we compare (shifted) templates associated with the artifici
 of the hybrid data.
 This will probably be meaningless unless you use the same master file to sort the hybrid data that you used to sort the
 data from which we derived our artificial events.
-We [compare](https://gitlab.com/vidriotech/spiegel/hybridfactory/blob/master/factory/validate/template.py#L52) in one of
-two ways: by computing correlation scores of the templates (in which case, higher is better), or by computing the
+We [compare](https://gitlab.com/vidriotech/spiegel/hybridfactory/blob/master/hybridfactory/validate/template.py#L52) in one of
+two ways: by computing (Pearson) correlation scores of the templates (in which case, higher is better), or by computing the
 (Frobenius) norm of the difference of the two templates (lower is better here).
 When we find the best matches in a 2 ms interval around each true firing, we can generate a
-[confusion matrix](https://gitlab.com/vidriotech/spiegel/hybridfactory/blob/master/factory/validate/comparison.py#L5)
+[confusion matrix](https://gitlab.com/vidriotech/spiegel/hybridfactory/blob/master/hybridfactory/validate/comparison.py#L5)
 to see how we did.
 
 This functionality is not in `generate.py`, but should be used in a Jupyter notebook (for now).
