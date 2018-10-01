@@ -20,6 +20,7 @@ notebooks/demos/*_demo/
 params-*.py
 
 # testing
-.env
+.cache
 .coverage
 .coveragerc
+.env
