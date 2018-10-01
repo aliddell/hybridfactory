@@ -254,7 +254,7 @@ def jrclust_from_matfile(dirname, matfile=None, consolidate=True):
     return ea
 
 
-def load_kilosort_templates(dirname):
+def load_kilosort_templates(dirname, filename=None):
     """Load templates output by KiloSort.
 
     Parameters
@@ -274,23 +274,36 @@ def load_kilosort_templates(dirname):
     """
 
     assert op.isdir(dirname)
-    npy_filename = op.join(dirname, "templates.npy")
-    ks_filename = op.join(dirname, "rez.mat")
+    if filename is None:
+        npy_filename = op.join(dirname, "templates.npy")
+        ks_filename = op.join(dirname, "rez.mat")
 
-    if op.isfile(npy_filename):  # this is the easy option
-        templates = _read_npy(npy_filename)
-    elif op.isfile(ks_filename):  # adapted from rezToPhy
-        U = _read_matlab(ks_filename, "rez/U")
-        W = _read_matlab(ks_filename, "rez/W")
+        if op.isfile(npy_filename):
+            filename = npy_filename
+        elif op.isfile(ks_filename):
+            filename = ks_filename
 
-        nt0 = W.shape[0]
-        n_filt = _read_matlab(ks_filename, "rez/ops/Nfilt", flatten=True)[0].astype(np.int64)
-        n_chan = _read_matlab(ks_filename, "rez/ops/Nchan", flatten=True)[0].astype(np.int64)
+    if filename != op.abspath(filename):
+        filename = op.join(dirname, filename)
 
-        templates = np.zeros((n_filt, nt0, n_chan), dtype=np.float32)
+    if filename.endswith(".npy"):  # this is the easy option
+        templates = _read_npy(filename)
+    elif op.isfile(filename):  # adapted from rezToPhy
+        U = _read_matlab(filename, "rez/U")
+        try:
+            W = _read_matlab(filename, "rez/Wphy")
+        except AttributeError:
+            W = _read_matlab(filename, "rez/W")
+
+        nt0, n_filt = W.shape[:2]
+        n_chan = _read_matlab(filename, "rez/ops/Nchan", flatten=True)[0].astype(np.int64)
+
+        templates = np.zeros((n_chan, nt0, n_filt), dtype=np.float32)
 
         for i in range(n_filt):
-            templates[i, :, :] = (np.matrix(U[:, i, :]) * np.matrix(W[:, i, :]).T).T
+            templates[:, :, i] = (np.matrix(U[:, i, :]) * np.matrix(W[:, i, :]).T)
+
+        templates = templates.transpose((2, 1, 0))
     else:  # nothing to load!
         raise ValueError(f"no obvious source for templates: {dirname}")
 
