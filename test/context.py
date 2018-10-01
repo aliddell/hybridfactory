@@ -10,7 +10,7 @@ import numpy as np
 
 from dotenv import load_dotenv
 load_dotenv()
-testbase = os.getenv("TESTBASE")
+testbase = op.abspath(os.getenv("TESTBASE"))
 
 import pytest
 
