@@ -11,7 +11,7 @@ setuptools.setup(
     version="0.1.0-beta",
     packages=setuptools.find_packages(),
     url="https://gitlab.com/vidriotech/spiegel/hybridfactory",
-    license="",
+    license="MIT",
     author="Alan Liddell",
     author_email="alan@vidriotech.com",
     description="A utility for generating hybrid ephys data",
