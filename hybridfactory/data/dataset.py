@@ -140,7 +140,7 @@ class DataSet(object):
         self._metadata.to_csv(filename, index=False)
 
     def last_sample(self):
-        last_i = self._metadata.index[-1]
+        last_i = self._metadata.last_valid_index()
         return self._metadata.loc[last_i, "start_time"] + self._metadata.loc[last_i, "samples"]
 
     def open_raw(self, mode="r"):
@@ -311,7 +311,7 @@ class AnnotatedDataSet(DataSet):
 
         self._annotations.to_csv(filename, index=False)
 
-    def unit_channels(self, unit, threshold, samples_before=40, samples_after=40):
+    def unit_channels(self, unit, threshold=0, samples_before=40, samples_after=40):
         """Find relevant channels in `unit`.
 
         Parameters
@@ -332,20 +332,35 @@ class AnnotatedDataSet(DataSet):
 
         if not isinstance(threshold, numbers.Integral):
             raise TypeError("threshold must be an integer")
-        elif threshold >= 0:
-            raise ValueError("threshold must be negative")
 
-        windows = self.unit_windows(unit, samples_before, samples_after, car=True)
+        if "channel_index" in self.annotations.columns:
+            channels = self.annotations.loc[self.annotations.cluster == unit, "channel_index"].values
+        else:
+            if not self.isopen:
+                self.open_raw()
+                close_self = True
+            else:
+                close_self = False
 
-        # no events found!
-        if windows.shape[2] == 0:
-            return np.array([])
+            if threshold >= 0:
+                raise ValueError("threshold must be negative")
 
-        # compute mean spike and get channels by thresholding
-        window_means = np.mean(windows, axis=2)
-        window_means_shift = window_means - window_means[:, 0][:, np.newaxis]
+            windows = self.unit_windows(unit, samples_before, samples_after, car=True)
 
-        return np.nonzero(np.any(window_means_shift < threshold, axis=1))[0]
+            # no events found!
+            if windows.shape[2] == 0:
+                return np.array([])
+
+            # compute mean spike and get channels by thresholding
+            window_means = np.mean(windows, axis=2)
+            window_means_shift = window_means - window_means[:, 0][:, np.newaxis]
+
+            channels = np.nonzero(np.any(window_means_shift < threshold, axis=1))[0]
+
+            if close_self:
+                self.close_raw()
+
+        return channels
 
     def unit_event_count(self, unit):
         try:
@@ -692,7 +707,7 @@ def load_dataset(dirname, **kwargs):
         metadata_file = op.join(dirname, mdfiles[0])
 
     if "annotations_file" in kwargs:
-        annotations_file = kwargs["metadata_file"]
+        annotations_file = kwargs["annotations_file"]
         if annotations_file != op.abspath(annotations_file):
             annotations_file = op.join(dirname, annotations_file)
     else:  # try to infer annotations file, but don't fail if we can't
@@ -703,7 +718,7 @@ def load_dataset(dirname, **kwargs):
             annotations_file = None
 
     if annotations_file is not None and "artificial_units_file" in kwargs:
-        artificial_units_file = kwargs["metadata_file"]
+        artificial_units_file = kwargs["artificial_units_file"]
         if artificial_units_file != op.abspath(artificial_units_file):
             artificial_units_file = op.join(dirname, artificial_units_file)
     else:  # try to infer artificial units file, but don't fail if we can't
@@ -767,6 +782,7 @@ def load_dataset(dirname, **kwargs):
     return dset
 
 
+# TODO: this would be great as a single NPZ file...
 def save_dataset(dataset, dirname, dataset_name=None):
     """Save a DataSet's metadata to a set of text and binary files.
 
