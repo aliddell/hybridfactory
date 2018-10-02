@@ -4,9 +4,11 @@ import pandas as pd
 
 from hybridfactory.data import annotation
 
+modbase = op.join(testbase, "annotation")
+
 class TestLoadKilosortRez:
     def setup(self):
-        self.ann = annotation.kilosort_from_rez(op.join(testbase, "annotation", "fromrez"), "eMouse-rez.mat")
+        self.ann = annotation.kilosort_from_rez(op.join(modbase, "fromrez"), "eMouse-rez.mat")
 
     def test_load_success(self):
         assert(isinstance(self.ann, pd.DataFrame))
@@ -39,7 +41,7 @@ class TestLoadKilosortRez:
 
 class TestLoadKilosort2Rez:
     def setup(self):
-        self.ann = annotation.kilosort_from_rez(op.join(testbase, "annotation", "fromrez"), "ks2-rez.mat")
+        self.ann = annotation.kilosort_from_rez(op.join(modbase, "fromrez"), "rez.mat")
 
     def test_load_success(self):
         assert(isinstance(self.ann, pd.DataFrame))
@@ -73,7 +75,7 @@ class TestLoadKilosort2Rez:
 
 class TestLoadKilosortPhy: # identical to Kilosort2Rez
     def setup(self):
-        self.ann = annotation.kilosort_from_phy(op.join(testbase, "annotation", "fromphy"))
+        self.ann = annotation.kilosort_from_phy(op.join(modbase, "fromphy"))
 
     def test_load_success(self):
         assert(isinstance(self.ann, pd.DataFrame))
@@ -107,7 +109,7 @@ class TestLoadKilosortPhy: # identical to Kilosort2Rez
 
 class TestJRCLUSTFromMatfile:
     def setup(self):
-        self.ann = annotation.jrclust_from_matfile(op.join(testbase, "annotation", "fromjrclust"))
+        self.ann = annotation.jrclust_from_matfile(op.join(modbase, "fromjrclust"), "testset_jrc.mat")
 
     def test_load_success(self):
         assert(isinstance(self.ann, pd.DataFrame))
@@ -140,27 +142,69 @@ class TestJRCLUSTFromMatfile:
 
 class TestJRCLUSTIncidentals:
     def setup(self):
-        self.testdir = op.join(testbase, "annotation", "fromjrclust")
+        self.testdir = op.join(modbase, "fromjrclust")
 
     def test_load_features(self):
-        features = annotation.load_jrc_features(self.testdir)
+        features = annotation.load_jrc_features(self.testdir, "testset_spkfet.jrc")
         assert(np.abs(features[4, 1, 10190] - 6.6172601e+02) < 1e-5)
 
+        features2 = annotation.load_jrc_features(self.testdir)
+        assert(np.linalg.norm(features - features2) == 0)
+
     def test_load_filtered(self):
-        filtered = annotation.load_jrc_filtered(self.testdir)
+        filtered = annotation.load_jrc_filtered(self.testdir, "testset_spkwav.jrc")
         assert(filtered[16, 5, 10190] == -19)
 
+        filtered2 = annotation.load_jrc_filtered(self.testdir)
+        assert(np.linalg.norm(filtered - filtered2) == 0)
+
     def test_load_raw(self):
-        raw = annotation.load_jrc_raw(self.testdir)
+        raw = annotation.load_jrc_raw(self.testdir, "testset_spkraw.jrc")
         assert(raw[38, 3, 10190] == 424)
+
+        raw2 = annotation.load_jrc_raw(self.testdir)
+        assert(np.linalg.norm(raw - raw2) == 0)
 
 
 class TestLoadKilosortTemplates:
     def setup(self):
-        self.phydir = op.join(testbase, "annotation", "fromphy")
-        self.rezdir = op.join(testbase, "annotation", "fromrez")
+        self.phydir = op.join(modbase, "fromphy")
+        self.rezdir = op.join(modbase, "fromrez")
 
     def test_equivalent(self):
         fromphy = annotation.load_kilosort_templates(self.phydir)
-        fromrez = annotation.load_kilosort_templates(self.rezdir, "ks2-rez.mat")
+        fromrez = annotation.load_kilosort_templates(self.rezdir)
         assert(np.linalg.norm(fromphy - fromrez) < 1e-5)
+
+    def test_ks1(self):
+        fromrez = annotation.load_kilosort_templates(self.rezdir, "eMouse-rez.mat")
+
+
+class TestLoadGroundTruthMatrix:
+    def setup(self):
+        self.testdir = op.join(modbase, "fromgroundtruth")
+
+    def test_with_filename(self):
+        gt = annotation.load_ground_truth_matrix(self.testdir, "gt.npy")
+        assert(gt.size == 0)
+
+    def test_no_filename(self):
+        gt = annotation.load_ground_truth_matrix(self.testdir)
+        assert(gt.size == 0)
+
+
+class TestMiscFailures:
+    def setup(self):
+        self.testdir = op.join(modbase, "miscfailures")
+
+    def test_oldstyle_matfile(self):
+        with pytest.raises(ValueError): # contains a v6 MAT file
+            annotation.kilosort_from_rez(self.testdir, "oldstyle-rez.mat")
+
+    def test_ambiguous_jrcfile(self):
+        with pytest.raises(ValueError): # contains multiple _jrc.mat files
+            annotation.jrclust_from_matfile(self.testdir)
+
+    def test_no_source_for_templates(self):
+        with pytest.raises(ValueError):
+            annotation.load_kilosort_templates(self.testdir)

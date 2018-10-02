@@ -7,7 +7,6 @@ from os import path as op
 import h5py
 import numpy as np
 import pandas as pd
-import scipy.io
 
 
 def _read_npy(filename, flatten=False):
@@ -51,15 +50,12 @@ def _read_matlab(filename, field, flatten=False):
     assert op.isfile(filename)
 
     try:
-        matfile = scipy.io.loadmat(filename)
-    except NotImplementedError:
         matfile = h5py.File(filename, 'r')
+    except OSError:
+        raise ValueError("old-style MAT file not supported; save as v7.3 and try again")
 
-    if isinstance(matfile, dict):  # old-style MAT file
-        result = matfile[field]
-    else:
-        result = matfile.get(field).value
-        matfile.close()
+    result = matfile.get(field).value
+    matfile.close()
 
     if flatten:
         result = result.ravel()
@@ -125,7 +121,7 @@ def _jrc_prefix(dirname):
     if len(matfiles) > 1:  # more than one file ending in _jrc.mat -- which one do we take?
         raise ValueError(f"ambiguous data directory: {dirname}")
 
-    return matfiles[0][:-8]
+    return matfiles[0].replace("_jrc.mat", "")
 
 
 def kilosort_from_rez(dirname, rezfile="rez.mat"):
@@ -283,34 +279,35 @@ def load_kilosort_templates(dirname, filename=None):
         elif op.isfile(ks_filename):
             filename = ks_filename
 
-    if filename != op.abspath(filename):
-        filename = op.join(dirname, filename)
+    if filename is not None:
+        if filename != op.abspath(filename):
+            filename = op.join(dirname, filename)
 
-    if filename.endswith(".npy"):  # this is the easy option
-        templates = _read_npy(filename)
-    elif op.isfile(filename):  # adapted from rezToPhy
-        U = _read_matlab(filename, "rez/U")
-        try:
-            W = _read_matlab(filename, "rez/Wphy")
-        except AttributeError:
-            W = _read_matlab(filename, "rez/W")
+        if filename.endswith(".npy"):  # this is the easy option
+            templates = _read_npy(filename)
+        elif op.isfile(filename):  # adapted from rezToPhy
+            U = _read_matlab(filename, "rez/U")
+            try:
+                W = _read_matlab(filename, "rez/Wphy")
+            except AttributeError:
+                W = _read_matlab(filename, "rez/W")
 
-        nt0, n_filt = W.shape[:2]
-        n_chan = _read_matlab(filename, "rez/ops/Nchan", flatten=True)[0].astype(np.int64)
+            nt0, n_filt = W.shape[:2]
+            n_chan = _read_matlab(filename, "rez/ops/Nchan", flatten=True)[0].astype(np.int64)
 
-        templates = np.zeros((n_chan, nt0, n_filt), dtype=np.float32)
+            templates = np.zeros((n_chan, nt0, n_filt), dtype=np.float32)
 
-        for i in range(n_filt):
-            templates[:, :, i] = (np.matrix(U[:, i, :]) * np.matrix(W[:, i, :]).T)
+            for i in range(n_filt):
+                templates[:, :, i] = (np.matrix(U[:, i, :]) * np.matrix(W[:, i, :]).T)
 
-        templates = templates.transpose((2, 1, 0))
+            templates = templates.transpose((2, 1, 0))
     else:  # nothing to load!
         raise ValueError(f"no obvious source for templates: {dirname}")
 
     return templates
 
 
-def load_jrc_raw(dirname):
+def load_jrc_raw(dirname, filename=None):
     """Load raw waveforms output by JRCLUST.
 
     Parameters
@@ -324,15 +321,21 @@ def load_jrc_raw(dirname):
         Raw event waveforms.
     """
 
-    prefix = _jrc_prefix(dirname)  # handles assertions for us
-    filename = op.join(dirname, f"{prefix}_spkraw.jrc")
+    if filename is None:
+        prefix = _jrc_prefix(dirname)  # handles assertions for us
+        filename = op.join(dirname, f"{prefix}_spkraw.jrc")
+    else:
+        if op.abspath(filename) != filename:
+            filename = op.join(dirname, filename)
+        prefix = op.basename(filename).replace("_spkraw.jrc", "")
+
     dims = tuple(_read_matlab(op.join(dirname, f"{prefix}_jrc.mat"), "dimm_raw", flatten=True).astype(np.int32))
     dtype = np.int16
 
     return _read_jrc(filename, dims, dtype)
 
 
-def load_jrc_filtered(dirname):
+def load_jrc_filtered(dirname, filename=None):
     """Load filtered waveforms output by JRCLUST.
 
     Parameters
@@ -346,15 +349,21 @@ def load_jrc_filtered(dirname):
         Filtered event waveforms.
     """
 
-    prefix = _jrc_prefix(dirname)  # handles assertions for us
-    filename = op.join(dirname, f"{prefix}_spkwav.jrc")
+    if filename is None:
+        prefix = _jrc_prefix(dirname)  # handles assertions for us
+        filename = op.join(dirname, f"{prefix}_spkwav.jrc")
+    else:
+        if op.abspath(filename) != filename:
+            filename = op.join(dirname, filename)
+        prefix = op.basename(filename).replace("_spkwav.jrc", "")
+
     dims = tuple(_read_matlab(op.join(dirname, f"{prefix}_jrc.mat"), "dimm_spk", flatten=True).astype(np.int32))
     dtype = np.int16
 
     return _read_jrc(filename, dims, dtype)
 
 
-def load_jrc_features(dirname):
+def load_jrc_features(dirname, filename=None):
     """Load features output by JRCLUST.
 
     Parameters
@@ -368,15 +377,21 @@ def load_jrc_features(dirname):
         Event features.
     """
 
-    prefix = _jrc_prefix(dirname)  # handles assertions for us
-    filename = op.join(dirname, f"{prefix}_spkfet.jrc")
+    if filename is None:
+        prefix = _jrc_prefix(dirname)  # handles assertions for us
+        filename = op.join(dirname, f"{prefix}_spkfet.jrc")
+    else:
+        if op.abspath(filename) != filename:
+            filename = op.join(dirname, filename)
+        prefix = op.basename(filename).replace("_spkfet.jrc", "")
+
     dims = tuple(_read_matlab(op.join(dirname, f"{prefix}_jrc.mat"), "dimm_fet", flatten=True).astype(np.int32))
     dtype = np.float32
 
     return _read_jrc(filename, dims, dtype)
 
 
-def load_ground_truth_matrix(dirname):
+def load_ground_truth_matrix(dirname, filename=None):
     """Load ground-truth matrix stored in firings_true.npy
 
     Parameters
@@ -390,12 +405,10 @@ def load_ground_truth_matrix(dirname):
         Ground-truth matrix.
     """
 
-    if not op.isdir(dirname):
-        raise ValueError(f"not a directory: {dirname}")
-    if not "firings_true.npy" in os.listdir(dirname):
-        raise IOError(f"firings_true not in directory: {dirname}")
-
-    filename = op.join(dirname, "firings_true.npy")
+    if filename is None:
+        filename = op.join(dirname, "firings_true.npy")
+    elif filename != op.abspath(filename):
+        filename = op.join(dirname, filename)
 
     result = _read_npy(filename).astype(np.int64)
 
