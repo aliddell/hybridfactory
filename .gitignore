@@ -22,6 +22,5 @@ params-*.py
 # testing
 .cache
 .coverage
-.coveragerc
 .env
 .tox
