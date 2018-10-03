@@ -29,9 +29,9 @@ test:
   - windows
   - spiegel-data
   before_script:
-  - echo TESTBASE = /data >.env
+  - echo TESTBASE=/data >test/.env
   script:
-  - pip install tox flake8 pytest pytest-coverage python-dotenv -r requirements.txt
+  - pip install tox flake8
   - tox -e py36,flake8
   coverage: '/TOTAL.+?(\d+)%/'
 
