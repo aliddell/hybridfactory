@@ -6,6 +6,8 @@ import re
 
 import numpy as np
 
+from hybridfactory.utils import natsort
+
 
 def get_start_times(filename):
     """Load start times (in units of samples) from a SpikeGL meta file (or glob of same).
@@ -21,15 +23,6 @@ def get_start_times(filename):
         Start times in order of glob expansion, zero-indexed.
 
     """
-    def _natsort(strings): # natural sort
-        ttime = re.compile(r"_t(\d+)\.")
-
-        def _natkey(term):
-            res = ttime.search(term)
-            return int(res.group(1)) if res is not None else term
-
-        return sorted(strings, key=_natkey)
-
     def _find_start(fn):
         with open(fn, "r") as fh:
             line = fh.readline().strip()
@@ -50,9 +43,9 @@ def get_start_times(filename):
         if not all([op.isfile(fn) for fn in filenames]):
             raise IOError("missing files")
 
-    sorted_files = _natsort(filenames)
+    sorted_files = natsort(filenames)
 
     # get absolute start time
     t0 = _find_start(sorted_files[0])
 
-    return np.array([_find_start(f) - t0 for f in filenames])
+    return np.array([_find_start(f) - t0 for f in sorted_files])

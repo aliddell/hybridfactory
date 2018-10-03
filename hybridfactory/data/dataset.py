@@ -14,6 +14,7 @@ import pandas as pd
 import hybridfactory.data.annotation
 from hybridfactory.probes.probe import Probe, save_probe, load_probe
 from hybridfactory.io.spikegl import get_start_times
+from hybridfactory.utils import natsort
 
 
 class DataSet(object):
@@ -52,7 +53,7 @@ class DataSet(object):
         self._sample_rate = sample_rate
 
         if isinstance(filename, str):
-            filenames = glob.glob(op.abspath(filename))
+            filenames = natsort(glob.glob(op.abspath(filename)))
         elif hasattr(filename, "__iter__"):
             assert all([op.isfile(f) for f in filename])
             filenames = filename
