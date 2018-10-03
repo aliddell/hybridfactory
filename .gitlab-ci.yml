@@ -23,7 +23,7 @@ test-windows:
   - windows
   - spiegel-data
   before_script:
-  - python3 -V               # Print out python version for debugging
+  - python -V               # Print out python version for debugging
   - pip3 install virtualenv
   - virtualenv venv
   - venv/Scripts/activate.bat
@@ -46,7 +46,7 @@ test-nix:
   - source venv/bin/activate
   - 'echo TESTBASE=/home/alan/tests/hybridfactory >.env'
   script:
-  - pip install tox flake8
+  - pip3 install tox flake8
   # - pip install pytest pytest-coverage python-dotenv -r requirements.txt
   - tox -e py36,flake8
   # - pytest -s --cov-conf test/.coveragerc --cov=hybridfactory test/
@@ -54,7 +54,7 @@ test-nix:
 
 wheelify:
   script:
-  - python setup.py sdist bdist_wheel
+  - python3 setup.py sdist bdist_wheel
   artifacts:
     paths:
     - dist/
@@ -63,7 +63,7 @@ document:
   tags:
   - nix
   script:
-  - pip install sphinx sphinx-rtd-theme sphinxcontrib-napoleon
+  - pip3 install sphinx sphinx-rtd-theme sphinxcontrib-napoleon
   - sphinx-apidoc -f -o docs/source hybridfactory/
   - cd docs
   - make html
