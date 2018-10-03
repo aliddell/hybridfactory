@@ -29,7 +29,7 @@ test:
   - windows
   - spiegel-data
   before_script:
-  - >>.env echo TESTBASE=F:/Tests/hybridfactory
+  - '>>.env echo TESTBASE=F:/Tests/hybridfactory'
   script:
   # - pip install tox flake8
   - pip install pytest pytest-coverage python-dotenv -r requirements.txt
