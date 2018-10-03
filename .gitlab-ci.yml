@@ -39,8 +39,8 @@ run:
 
 pages:
   script:
-  - pip install sphinx sphinx-rtd-theme sphinx-napoleon
-  - sphinx-apidoc -f -o docs/source 
+  - pip install sphinx sphinx-rtd-theme sphinxcontrib-napoleon
+  - sphinx-apidoc -f -o docs/source
   - cd doc ; make html
   - mv build/html/ ../public/
   artifacts:
