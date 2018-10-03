@@ -52,12 +52,12 @@ test-nix:
   # - pytest -s --cov-conf test/.coveragerc --cov=hybridfactory test/
   coverage: '/TOTAL.+?(\d+)%/'
 
-build:
+wheelify:
   script:
-  - python setup.py bdist_wheel
+  - python setup.py sdist bdist_wheel
   artifacts:
     paths:
-    - dist/*.whl
+    - dist/
 
 document:
   tags:
