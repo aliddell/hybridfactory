@@ -21,7 +21,7 @@ cache:
 before_script:
 
 
-test:
+test-windows:
   tags:
   - windows
   - spiegel-data
@@ -38,7 +38,7 @@ test:
   # - pytest -s --cov-conf test/.coveragerc --cov=hybridfactory test/
   coverage: '/TOTAL.+?(\d+)%/'
 
-test:
+test-nix:
   tags:
   - not-windows
   - spiegel-data
@@ -64,28 +64,15 @@ build:
 
 document:
   tags:
-  - windows
-  script:
-  - pip install sphinx sphinx-rtd-theme sphinxcontrib-napoleon
-  - sphinx-apidoc -f -o docs/source hybridfactory/
-  - cd docs
-  - make.bat html
-  artifacts:
-    paths:
-    - build/html
-  only:
-  - master
-
-document:
-  tags:
   - not-windows
   script:
   - pip install sphinx sphinx-rtd-theme sphinxcontrib-napoleon
   - sphinx-apidoc -f -o docs/source hybridfactory/
   - cd docs
   - make html
+  - mv build/html/ ../public/
   artifacts:
     paths:
-    - build/html
+    - public
   only:
   - master
