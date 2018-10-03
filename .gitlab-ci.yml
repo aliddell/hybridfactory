@@ -41,7 +41,7 @@ document:
   script:
   - pip install sphinx sphinx-rtd-theme sphinxcontrib-napoleon
   - sphinx-apidoc -f -o docs/source hybridfactory/
-  - cd doc ; make html
+  - cd docs ; make html
   - mv build/html/ ../public/
   artifacts:
     paths:
