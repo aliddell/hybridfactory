@@ -1,7 +1,7 @@
 # This file is a template, and might need editing before it works on your project.
 # Official language image. Look for the different tagged releases at:
 # https://hub.docker.com/r/library/python/tags/
-image: python:latest
+image: python:3.6
 
 # Change pip's cache directory to be inside the project directory since we can
 # only cache local items.
@@ -29,7 +29,7 @@ test:
   - pip install tox flake8 pytest pytest-coverage python-dotenv -r requirements.txt
   - tox -e py36,flake8
 
-run:
+build:
   script:
   - python setup.py bdist_wheel
   # run the command here
@@ -37,10 +37,10 @@ run:
     paths:
     - dist/*.whl
 
-pages:
+document:
   script:
   - pip install sphinx sphinx-rtd-theme sphinxcontrib-napoleon
-  - sphinx-apidoc -f -o docs/source
+  - sphinx-apidoc -f -o docs/source hybridfactory/
   - cd doc ; make html
   - mv build/html/ ../public/
   artifacts:
