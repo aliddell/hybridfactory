@@ -18,16 +18,14 @@ cache:
     - .cache/pip
     - venv/
 
-before_script:
-  - python3 -V               # Print out python version for debugging
-  - pip3 install virtualenv
-  - virtualenv venv
-
 test-windows:
   tags:
   - windows
   - spiegel-data
   before_script:
+  - python3 -V               # Print out python version for debugging
+  - pip3 install virtualenv
+  - virtualenv venv
   - venv/Scripts/activate.bat
   - '>>.env echo TESTBASE=F:/Tests/hybridfactory'
   script:
@@ -42,6 +40,9 @@ test-nix:
   - not-windows
   - spiegel-data
   before_script:
+  - python3 -V               # Print out python version for debugging
+  - pip3 install virtualenv
+  - virtualenv venv
   - source venv/bin/activate
   - 'echo TESTBASE=/home/alan/tests/hybridfactory >.env'
   script:
@@ -60,7 +61,7 @@ wheelify:
 
 document:
   tags:
-  - not-windows
+  - nix
   script:
   - pip install sphinx sphinx-rtd-theme sphinxcontrib-napoleon
   - sphinx-apidoc -f -o docs/source hybridfactory/
