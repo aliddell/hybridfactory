@@ -18,18 +18,15 @@ cache:
     - .cache/pip
     - venv/
 
-before_script:
-
-
 test-windows:
   tags:
   - windows
   - spiegel-data
   before_script:
   - python -V               # Print out python version for debugging
-  - pip install virtualenv
+  - pip3 install virtualenv
   - virtualenv venv
-  - venv/bin/activate
+  - venv/Scripts/activate.bat
   - '>>.env echo TESTBASE=F:/Tests/hybridfactory'
   script:
   - pip install tox flake8
@@ -43,8 +40,8 @@ test-nix:
   - not-windows
   - spiegel-data
   before_script:
-  - python -V               # Print out python version for debugging
-  - pip install virtualenv
+  - python3 -V               # Print out python version for debugging
+  - pip3 install virtualenv
   - virtualenv venv
   - source venv/bin/activate
   - 'echo TESTBASE=/home/alan/tests/hybridfactory'
