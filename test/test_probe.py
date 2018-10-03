@@ -2,6 +2,8 @@ from context import *
 
 from hybridfactory import probes
 
+modbase = op.join(testbase, "probes")
+
 
 class TestEmouse:
     def setup(self):
@@ -118,25 +120,24 @@ class TestEmouse:
                                                             np.array([7, 8, 9, 9, 10, 10, 11, 11, 12, 12, 13, 13, 14, 14, 15, 15, 16, 17, 17, 18,
                                                                       18, 19, 19, 20, 20, 21, 21, 22, 22, 23, 23, 24])[:, np.newaxis]))).all())
         assert((probe.coordinate_channels(np.array([[20, 140]])) == np.array([7])).all())
-        assert(len(probe.display()) == 2)
         assert(len(probe.possible_shifts([1, 2])) == 13)
         assert(len(probe.possible_shifts([1, 2, 5, 6, 9, 10])) == 0)
 
 
     def test_save_load(self):
         probe = self.probe
-        probes.save_probe(probe, op.join(testbase, "probes", "test_save.npz"))
-        newprobe = probes.load_probe(op.join(testbase, "probes", "test_save.npz"))
+        probes.save_probe(probe, op.join(modbase, "test_save.npz"))
+        newprobe = probes.load_probe(op.join(modbase, "test_save.npz"))
         assert(probe == newprobe)
 
         # clean up
-        os.unlink(op.join(testbase, "probes", "test_save.npz"))
+        os.unlink(op.join(modbase, "test_save.npz"))
 
         with pytest.raises(TypeError):
-            probes.save_probe("foo", op.join(testbase, "probes", "test_failsave.npz"))
+            probes.save_probe("foo", op.join(modbase, "test_failsave.npz"))
 
         with pytest.raises(ValueError):
-            probes.load_probe(op.join(testbase, "probes", "not_a_probe.npz"))
+            probes.load_probe(op.join(modbase, "not_a_probe.npz"))
 
 class TestNeuropixels3A:
     def setup(self):
@@ -144,3 +145,53 @@ class TestNeuropixels3A:
 
     def test_equals(self):
         assert(self.probe != probes.neuropixels3a(False))
+
+
+class TestMiscFailures:
+    def setup(self):
+        self.channel_map = np.array([1, 2, 3, 4])
+        self.connected = np.ones((4,), dtype=np.bool_)
+        self.channel_positions = np.array([[0, 1], [1, 1], [2, 1], [3, 1]])
+        self.name = "test probe"
+
+    def test_probe_constructor(self):
+        channel_map = self.channel_map
+        connected = self.connected
+        channel_positions = self.channel_positions
+        name = self.name
+
+        with pytest.raises(TypeError): # channel map: ndarray
+            probes.custom_probe([1, 2, 3, 4], connected, channel_map, name)
+
+        with pytest.raises(ValueError): # channel map: integer
+            probes.custom_probe(channel_map.astype(np.float32), connected, channel_map, name)
+
+        with pytest.raises(ValueError): # channel map: dimension
+            probes.custom_probe(np.vstack((channel_map, channel_map)), connected, channel_map, name)
+
+        with pytest.raises(TypeError): # connected: ndarray
+            probes.custom_probe(channel_map, [True, True, True, True], channel_map, name)
+
+        with pytest.raises(ValueError): # connected: integer
+            probes.custom_probe(channel_map, connected.astype(np.int16), channel_map, name)
+
+        with pytest.raises(ValueError): # connected: dimension
+            probes.custom_probe(channel_map, np.vstack((connected, connected)), channel_map, name)
+
+        with pytest.raises(ValueError): # connected/channel map mismatch
+            probes.custom_probe(channel_map, np.array([True, True, True, True, False]), channel_map, name)
+
+        with pytest.raises(TypeError): # channel positions: ndarray
+            probes.custom_probe(channel_map, connected, [1, 2, 3, 4], name)
+
+        with pytest.raises(ValueError): # channel positions: dimension
+            probes.custom_probe(channel_map, connected, np.reshape(channel_positions, (2, 2, 2)), name)
+
+        with pytest.raises(ValueError): # channel positions: dimension again
+            probes.custom_probe(channel_map, connected, np.vstack((channel_positions, channel_positions)), name)
+
+        with pytest.raises(ValueError): # channel positions: dimension again
+            probes.custom_probe(channel_map, connected, np.ravel(channel_positions)[:4, np.newaxis], name)
+
+        with pytest.raises(TypeError): # name not a string
+            probes.custom_probe(channel_map, connected, channel_positions, 0)

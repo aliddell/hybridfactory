@@ -5,9 +5,11 @@ import pandas as pd
 from hybridfactory.probes import probe as prb
 from hybridfactory.data import dataset as dset
 
+modbase = op.join(testbase, "dataset")
+
 class TestAnnotatedDatasetJRCLUST:
     def setup(self):
-        self.testdir = op.abspath(op.join(testbase, "dataset", "fromjrclust"))
+        self.testdir = op.abspath(op.join(modbase, "fromjrclust"))
         self.filename = op.join(self.testdir, "anm420712_20180802_ch0-119bank1_ch120-382bank0_g0_t2.imec.ap.bin")
         self.dtype = np.int16
         self.sample_rate = 30000
@@ -123,7 +125,7 @@ class TestAnnotatedDatasetJRCLUST:
         assert(len(hds.artificial_units) == 0)
 
         hds.export_artificial_units(op.join(hybrid_dir, "au.csv"))
-        assert(os.stat(op.join(hybrid_dir, "au.csv")).st_size == 44)
+        assert(pd.read_csv(op.join(hybrid_dir, "au.csv")).shape[0] == 0)
 
         hds.export_ground_truth_matrix(op.join(hybrid_dir, "gt.npy"))
         gtu = np.load(op.join(hybrid_dir, "gt.npy"))
@@ -152,7 +154,7 @@ class TestAnnotatedDatasetJRCLUST:
 
 class TestAnnotatedDatasetKilosort:
     def setup(self):
-        self.testdir = op.abspath(op.join(testbase, "dataset", "fromkilosort"))
+        self.testdir = op.abspath(op.join(modbase, "fromkilosort"))
         self.filename = op.join(self.testdir, "sim_binary.dat")
         self.dtype = np.int16
         self.sample_rate = 25000
@@ -256,7 +258,7 @@ class TestAnnotatedDatasetKilosort:
         assert(len(hds.artificial_units) == 0)
 
         hds.export_artificial_units(op.join(hybrid_dir, "au.csv"))
-        assert(os.stat(op.join(hybrid_dir, "au.csv")).st_size == 44)
+        assert(pd.read_csv(op.join(hybrid_dir, "au.csv")).shape[0] == 0)
 
         hds.export_ground_truth_matrix(op.join(hybrid_dir, "gt.npy"))
         gtu = np.load(op.join(hybrid_dir, "gt.npy"))
@@ -282,3 +284,39 @@ class TestAnnotatedDatasetKilosort:
         assert(dload.probe == dataset.probe)
         assert((dload.metadata == dataset.metadata).all().all())
         assert((dload.annotations == dataset.annotations).all().all())
+
+
+class TestMiscFailures:
+    def setup(self):
+        self.testdir = op.join(modbase, "miscfailures")
+
+    def test_dataset_constructor(self):
+        filename = op.join(self.testdir, "sim_binary.dat")
+        dtype = np.int16
+        sample_rate = 25000
+        probe = prb.eMouse()
+        start_times = 0
+
+        with pytest.raises(TypeError): # dtype fails
+            dset.DataSet(filename, "np.int16", sample_rate, probe, start_times)
+
+        with pytest.raises(TypeError): # probe fails
+            dset.DataSet(filename, dtype, sample_rate, "probe", start_times)
+
+        with pytest.raises(TypeError): # sample rate fails: integer
+            dset.DataSet(filename, dtype, float(sample_rate), probe, start_times)
+
+        with pytest.raises(ValueError): # sample rate fails: positive
+            dset.DataSet(filename, dtype, -sample_rate, probe, start_times)
+
+        with pytest.raises(IOError): # filenames
+            dset.DataSet(None, dtype, sample_rate, probe, start_times)
+
+        with pytest.raises(ValueError): # filenames/start times mismatch
+            dset.DataSet(filename, dtype, sample_rate, probe, [start_times, 0])
+
+        with pytest.raises(TypeError): # start times fails: integer
+            dset.DataSet(filename, dtype, sample_rate, probe, 0.0)
+
+        with pytest.raises(ValueError): # start times fails: positive
+            dset.DataSet(filename, dtype, sample_rate, probe, -1)
