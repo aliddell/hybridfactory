@@ -29,7 +29,8 @@ test:
   - pip install tox flake8 pytest pytest-coverage python-dotenv -r requirements.txt
   - tox -e py36,flake8
   artifacts:
-    - .coverage
+    paths:
+      - .coverage
 
 build:
   script:
