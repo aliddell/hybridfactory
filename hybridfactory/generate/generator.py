@@ -98,6 +98,12 @@ class SVDGenerator(HybridEventGenerator):
         elif num_events is not None and num_events <= 0:
             raise ValueError("num_events must be positive")
 
+        if not self._dataset.isopen:
+            close_after = True
+            self._dataset.open_raw("r")
+        else:
+            close_after = False
+
         events = self._dataset.unit_windows(unit, self.samples_before, self.samples_after)
         if np.prod(events.shape) == 0:
             raise NoEventException(f"no events found for unit {unit}")
@@ -144,6 +150,9 @@ class SVDGenerator(HybridEventGenerator):
                  np.cumsum(flat_recon_events.reshape(num_channels, num_samples - 1, num_original_events, order="F"),
                            axis=1))
         )
+
+        if close_after:
+            self._dataset.close_raw()
 
         return recon_events[:, :, np.random.choice(num_original_events, size=num_events, replace=True)]
 
