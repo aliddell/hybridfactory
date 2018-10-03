@@ -21,13 +21,13 @@ cache:
 before_script:
   - python -V               # Print out python version for debugging
   - pip install virtualenv
-  - virtualenv venv
 
 test:
   tags:
   - windows
   - spiegel-data
   before_script:
+  - virtualenv venv
   - venv/bin/activate
   - '>>.env echo TESTBASE=F:/Tests/hybridfactory'
   script:
@@ -42,6 +42,7 @@ test:
   - not-windows
   - spiegel-data
   before_script:
+  - virtualenv venv
   - source venv/bin/activate
   - 'echo TESTBASE=/home/alan/tests/hybridfactory'
   script:
