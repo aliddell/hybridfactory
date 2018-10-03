@@ -25,17 +25,19 @@ before_script:
   - source venv/bin/activate
 
 test:
+  tags:
+  - windows
+  - spiegel-data
+  before_script:
+  - echo TESTBASE = /data >.env
   script:
   - pip install tox flake8 pytest pytest-coverage python-dotenv -r requirements.txt
   - tox -e py36,flake8
-  artifacts:
-    paths:
-      - .coverage
+  coverage: '/TOTAL.+?(\d+)%/'
 
 build:
   script:
   - python setup.py bdist_wheel
-  # run the command here
   artifacts:
     paths:
     - dist/*.whl
