@@ -340,7 +340,7 @@ class AnnotatedDataSet(DataSet):
             raise TypeError("threshold must be an integer")
 
         if "channel_index" in self.annotations.columns:
-            channels = self.annotations.loc[self.annotations.cluster == unit, "channel_index"].values
+            channels = np.unique(self.annotations.loc[self.annotations.cluster == unit, "channel_index"].values)
         else:
             if not self.isopen:
                 self.open_raw()
