@@ -22,7 +22,7 @@ class Probe(object):
             raise TypeError("channel_map must be a NumPy array")
         elif not np.issubdtype(channel_map.dtype, np.integer):
             raise ValueError("channel_map must be an integer type")
-        elif np.ravel(channel_map).ndim != 1:
+        elif np.squeeze(channel_map).ndim != 1:
             raise ValueError("channel_map must be 1-dimensional")
 
         # channel_map is fixed
@@ -33,7 +33,7 @@ class Probe(object):
             raise TypeError("connected must be a NumPy array")
         elif not np.issubdtype(connected.dtype, np.bool_):
             raise ValueError("connected must be a boolean type")
-        elif np.ravel(connected).ndim != 1:
+        elif np.squeeze(connected).ndim != 1:
             raise ValueError("connected must be 1-dimensional")
         elif connected.size != channel_map.size:
             raise ValueError("connected and channel_map must be the same size")

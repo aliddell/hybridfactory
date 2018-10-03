@@ -68,7 +68,7 @@ class DataSet(object):
             start_times = np.array(start_times)
 
         if start_times.size != len(filenames):
-            raise ValueError(f"count of start times ({start_times.size}) does not match number of files ({len(files)})")
+            raise ValueError(f"count of start times ({start_times.size}) does not match number of files ({len(filenames)})")
 
         if not np.issubdtype(start_times.dtype, np.integer):
             raise TypeError("start_times must be integers")
@@ -192,37 +192,43 @@ class DataSet(object):
 
         """
 
-        if self._data is None:
-            raise UnopenedDataException("this data set is not open for reading")
+        if not self.isopen:
+            self.open_raw("r")
+            close_after = True
         else:
-            assert isinstance(channels, np.ndarray)
-            assert channels.min() >= 0 and channels.max() < self._probe.num_channels
-            assert isinstance(samples, np.ndarray)
-            assert samples.min() >= 0 and samples.max() < self.last_sample()
+            close_after = False
 
-            if len(channels.shape) == 1:
-                channels = channels[:, np.newaxis]
+        assert isinstance(channels, np.ndarray)
+        assert channels.min() >= 0 and channels.max() < self._probe.num_channels
+        assert isinstance(samples, np.ndarray)
+        assert samples.min() >= 0 and samples.max() < self.last_sample()
 
-            file_indices = np.searchsorted(self._metadata.start_time, samples, side="right") - 1
+        if len(channels.shape) == 1:
+            channels = channels[:, np.newaxis]
 
-            if (file_indices < 0).any():
+        file_indices = np.searchsorted(self._metadata.start_time, samples, side="right") - 1
+
+        if (file_indices < 0).any():
+            raise ValueError("sample indices outside of data bounds")
+
+        values = np.zeros((channels.size, samples.size), dtype=self._dtype)
+
+        for i in np.unique(file_indices):
+            mask = file_indices == i
+            lower_bound = self._metadata.loc[i, "start_time"]
+            upper_bound = lower_bound + self._metadata.loc[i, "samples"]
+
+            subsamples = samples[mask][np.newaxis, :]
+            if not ((subsamples >= lower_bound).all() and (subsamples < upper_bound).all()):
                 raise ValueError("sample indices outside of data bounds")
 
-            values = np.zeros((channels.size, samples.size), dtype=self._dtype)
+            data = self._data[self._metadata.loc[i, "filename"]][channels, subsamples - lower_bound]
+            values[:, mask] = data
 
-            for i in np.unique(file_indices):
-                mask = file_indices == i
-                lower_bound = self._metadata.loc[i, "start_time"]
-                upper_bound = lower_bound + self._metadata.loc[i, "samples"]
+        if close_after:
+            self.close_raw()
 
-                subsamples = samples[mask][np.newaxis, :]
-                if not ((subsamples >= lower_bound).all() and (subsamples < upper_bound).all()):
-                    raise ValueError("sample indices outside of data bounds")
-
-                data = self._data[self._metadata.loc[i, "filename"]][channels, subsamples - lower_bound]
-                values[:, mask] = data
-
-            return values
+        return values
 
     def write_roi(self, channels, samples, values):
         """Write a region to the underlying raw data file(s).
@@ -587,6 +593,8 @@ def new_annotated_dataset(filename, dtype, sample_rate, probe, ann_location=None
 
     if not ann_location:  # try to load from the same directory
         ann_location = op.dirname(filename)
+        if ann_location == "":
+            ann_location = "."
 
     assert op.isdir(ann_location)
 
