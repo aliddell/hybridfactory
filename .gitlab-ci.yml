@@ -22,14 +22,28 @@ before_script:
   - python -V               # Print out python version for debugging
   - pip install virtualenv
   - virtualenv venv
-  - source venv/bin/activate
 
 test:
   tags:
   - windows
   - spiegel-data
   before_script:
+  - venv/bin/activate
   - '>>.env echo TESTBASE=F:/Tests/hybridfactory'
+  script:
+  - pip install tox flake8
+  # - pip install pytest pytest-coverage python-dotenv -r requirements.txt
+  - tox -e py36,flake8
+  # - pytest -s --cov-conf test/.coveragerc --cov=hybridfactory test/
+  coverage: '/TOTAL.+?(\d+)%/'
+
+test:
+  tags:
+  - not-windows
+  - spiegel-data
+  before_script:
+  - source venv/bin/activate
+  - 'echo TESTBASE=/home/alan/tests/hybridfactory'
   script:
   - pip install tox flake8
   # - pip install pytest pytest-coverage python-dotenv -r requirements.txt
@@ -52,6 +66,20 @@ document:
   - sphinx-apidoc -f -o docs/source hybridfactory/
   - cd docs
   - make.bat html
+  artifacts:
+    paths:
+    - build/html
+  only:
+  - master
+
+document:
+  tags:
+  - not-windows
+  script:
+  - pip install sphinx sphinx-rtd-theme sphinxcontrib-napoleon
+  - sphinx-apidoc -f -o docs/source hybridfactory/
+  - cd docs
+  - make html
   artifacts:
     paths:
     - build/html
