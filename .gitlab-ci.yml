@@ -41,7 +41,7 @@ test-nix:
   - pip3 install virtualenv
   - virtualenv venv
   - source venv/bin/activate
-  - 'echo TESTBASE=/var/local/test-data/hybridfactory >.env'
+  - 'echo TESTBASE=/data/hybridfactory >.env'
   script:
   - pip3 install tox flake8
   # - pip install pytest pytest-coverage python-dotenv -r requirements.txt
