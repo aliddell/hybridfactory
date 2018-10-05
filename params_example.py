@@ -54,9 +54,5 @@ amplitude_scale_max = 1.5
 samples_before = 40
 # number of samples to take after an event timestep
 samples_after = 40
-# threshold a channel must exceed to be considered part of an event
-event_threshold = -30
 # whether or not to copy the source to the target
 copy = True
-# whether or not to erase the true units from the hybrid data (EXPERIMENTAL)
-erase = True

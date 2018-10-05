@@ -318,15 +318,13 @@ class AnnotatedDataSet(DataSet):
 
         self._annotations.to_csv(filename, index=False)
 
-    def unit_channels(self, unit, threshold=0, samples_before=40, samples_after=40):
+    def unit_channels(self, unit, samples_before=40, samples_after=40):
         """Find relevant channels in `unit`.
 
         Parameters
         ----------
         unit : int
             Cluster ID of unit of interest.
-        threshold : int
-            Negative threshold which a channel must surpass to be considered relevant.
         samples_before : int
             Number of samples before each unit time to read.
         samples_after : int
@@ -337,9 +335,6 @@ class AnnotatedDataSet(DataSet):
         channels : numpy.ndarray
         """
 
-        if not isinstance(threshold, numbers.Integral):
-            raise TypeError("threshold must be an integer")
-
         if "channel_index" in self.annotations.columns:
             channels = np.unique(self.annotations.loc[self.annotations.cluster == unit, "channel_index"].values)
         else:
@@ -348,9 +343,6 @@ class AnnotatedDataSet(DataSet):
                 close_self = True
             else:
                 close_self = False
-
-            if threshold >= 0:
-                raise ValueError("threshold must be negative")
 
             windows = self.unit_windows(unit, samples_before, samples_after, car=True)
 
@@ -362,6 +354,7 @@ class AnnotatedDataSet(DataSet):
             window_means = np.mean(windows, axis=2)
             window_means_shift = window_means - window_means[:, 0][:, np.newaxis]
 
+            threshold = np.percentile(window_means_shift.ravel(), 2)
             channels = np.nonzero(np.any(window_means_shift < threshold, axis=1))[0]
 
             if close_self:

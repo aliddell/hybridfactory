@@ -246,7 +246,7 @@ class TestAnnotatedDatasetKilosort:
         assert(firing_times[-1] == firing_times.max() == 24999342)
         assert(len(dataset.unit_firing_times("foo")) == 0)
 
-        assert((np.unique(dataset.unit_channels(1, -550)) == np.array([24, 28])).all())
+        assert((np.unique(dataset.unit_channels(1)) == np.array([0, 18, 20, 22, 24, 26, 28])).all())
 
     def test_hybrid_dataset(self):
         source = self.dataset

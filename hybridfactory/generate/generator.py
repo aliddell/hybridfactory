@@ -26,15 +26,8 @@ class HybridEventGenerator(object):
 
 
 class SVDGenerator(HybridEventGenerator):
-    def __init__(self, dataset, event_threshold, samples_before, samples_after):
+    def __init__(self, dataset, samples_before, samples_after):
         super().__init__(dataset)
-
-        if not isinstance(event_threshold, numbers.Integral):
-            raise TypeError("event_threshold must be an integer")
-        elif event_threshold >= 0:
-            raise ValueError("event_threshold must be negative")
-
-        self._event_threshold = event_threshold
 
         if not isinstance(samples_before, numbers.Integral):
             raise TypeError("samples_before must be an integer")
@@ -56,7 +49,8 @@ class SVDGenerator(HybridEventGenerator):
 
     @dataset.setter
     def dataset(self, val):
-        assert isinstance(val, HybridDataSet)
+        if isinstance(val, HybridDataSet):
+            self._dataset = val
 
     @property
     def probe(self):
@@ -113,7 +107,6 @@ class SVDGenerator(HybridEventGenerator):
 
         # now create sub-array for just appropriate channels
         channels = self._dataset.unit_channels(unit=unit,
-                                               threshold=self._event_threshold,
                                                samples_before=self._samples_before,
                                                samples_after=self._samples_after)
 
@@ -146,9 +139,9 @@ class SVDGenerator(HybridEventGenerator):
         # reconstruct artificial event derivatives from SVD and integrate
         flat_recon_events = np.array(u * s * vt)
         recon_events = np.hstack(
-                (np.zeros((num_channels, 1, num_original_events)),
-                 np.cumsum(flat_recon_events.reshape(num_channels, num_samples - 1, num_original_events, order="F"),
-                           axis=1))
+            (np.zeros((num_channels, 1, num_original_events)),
+             np.cumsum(flat_recon_events.reshape(num_channels, num_samples - 1, num_original_events, order="F"),
+                       axis=1))
         )
 
         if close_after:
@@ -156,126 +149,125 @@ class SVDGenerator(HybridEventGenerator):
 
         return recon_events[:, :, np.random.choice(num_original_events, size=num_events, replace=True)]
 
-    @staticmethod
-    def erase_events(events, centers, kind="cubic"):
-        """Remove events from windows via spline interpolation.
+    # @staticmethod
+    # def erase_events(events, centers, kind="cubic"):
+    #     """Remove events from windows via spline interpolation.
+    #
+    #     Parameters
+    #     ----------
+    #     events : numpy.ndarray
+    #         Tensor, num_channels x num_samples x num_events.
+    #     centers : numpy.ndarray
+    #         Array, num_events. Event centers in windows.
+    #     kind : str, optional
+    #
+    #     Returns
+    #     -------
+    #     erased_events : numpy.ndarray
+    #         Events, after erasure.
+    #     """
+    #
+    #     def _find_left_right(win, center):
+    #         assert win.ndim == 1
+    #
+    #         m = win.size // 2
+    #         rad = win.size // 8
+    #
+    #         if center is None:  # assume window is "centered" at event
+    #             nbd = win[m - rad:m + rad]
+    #             center = np.abs(nbd).argmax() + m - rad
+    #             is_local_min = nbd[rad] == nbd.min()
+    #         else:
+    #             nbd = win[center - rad:center + rad]
+    #             is_local_min = nbd[rad] == nbd.min()
+    #
+    #         # find points where first and second derivative change signs
+    #         wdiff = np.diff(win)  # first derivative
+    #         scale_factor = np.abs(wdiff)
+    #         scale_factor[scale_factor == 0] = 1
+    #         abswdiff = wdiff / scale_factor
+    #
+    #         wdiff2 = np.diff(wdiff)  # second derivative
+    #         scale_factor2 = np.abs(wdiff2)
+    #         scale_factor2[scale_factor2 == 0] = 1
+    #         abswdiff2 = wdiff2 / scale_factor2
+    #
+    #         turning_points = np.union1d(
+    #                 np.where(np.array([abswdiff[i] != abswdiff[i + 1] for i in range(abswdiff.size - 1)]))[0] + 1,
+    #                 np.where(np.array([abswdiff2[i] != abswdiff2[i + 1] for i in range(abswdiff2.size - 1)]))[0] + 2)
+    #         tp_center = np.abs(center - turning_points).argmin()
+    #
+    #         if tp_center < 2 or tp_center > turning_points.size - 2:
+    #             if is_local_min:  # all differences are negative until center, then positive
+    #                 # find the last difference before the center that is positive
+    #                 wleft = center - np.where(wdiff[:center - 1][::-1] > 0)[0][0]
+    #                 # find the first difference after the center that is negative
+    #                 wright = center + np.where(wdiff[center + 1:] < 0)[0][0]
+    #             else:  # all differences are positive until center, then negative
+    #                 # find the last difference before the center that is negative
+    #                 wleft = center - np.where(wdiff[:center - 1][::-1] < 0)[0][0]
+    #                 # find the first difference after the center that is positive
+    #                 wright = center + np.where(wdiff[center + 1:] > 0)[0][0]
+    #         else:
+    #             wleft = turning_points[tp_center - 2] + (center - turning_points[tp_center - 2]) // 2
+    #             wright = turning_points[tp_center + 2] + (turning_points[tp_center + 2] - center) // 2
+    #
+    #         return wleft, wright
+    #
+    #     if centers is None:
+    #         centers = events.min(axis=0).argmin(axis=0)
+    #     elif not isinstance(centers, np.ndarray):
+    #         raise TypeError("centers must be a NumPy array")
+    #     elif not np.issubdtype(centers.dtype, np.integer):
+    #         raise TypeError("centers must be an integral array")
+    #     elif centers.size != events.shape[2]:
+    #         raise ValueError("centers length must match num_events")
+    #
+    #     erased_events = events.copy().astype(np.float64)
+    #
+    #     for k in range(events.shape[2]):
+    #         event = erased_events[:, :, k]
+    #
+    #         for j, channel_window in enumerate(event):
+    #             wl, wr = _find_left_right(channel_window, center=centers[k])
+    #
+    #             exes = np.hstack((np.arange(wl), np.arange(wr, channel_window.size)))
+    #             whys = channel_window[exes]
+    #             g = scipy.interpolate.interp1d(exes, whys, kind)
+    #
+    #             event[j, :] = g(np.arange(channel_window.size))
+    #             event[j, wl:wr] += 3 * np.random.randn(wr - wl)
+    #
+    #     return erased_events.astype(events.dtype)
 
-        Parameters
-        ----------
-        events : numpy.ndarray
-            Tensor, num_channels x num_samples x num_events.
-        centers : numpy.ndarray
-            Array, num_events. Event centers in windows.
-        kind : str, optional
-
-        Returns
-        -------
-        erased_events : numpy.ndarray
-            Events, after erasure.
-        """
-
-        def _find_left_right(win, center):
-            assert win.ndim == 1
-
-            m = win.size // 2
-            rad = win.size // 8
-
-            if center is None:  # assume window is "centered" at event
-                nbd = win[m - rad:m + rad]
-                center = np.abs(nbd).argmax() + m - rad
-                is_local_min = nbd[rad] == nbd.min()
-            else:
-                nbd = win[center - rad:center + rad]
-                is_local_min = nbd[rad] == nbd.min()
-
-            # find points where first and second derivative change signs
-            wdiff = np.diff(win)  # first derivative
-            scale_factor = np.abs(wdiff)
-            scale_factor[scale_factor == 0] = 1
-            abswdiff = wdiff / scale_factor
-
-            wdiff2 = np.diff(wdiff)  # second derivative
-            scale_factor2 = np.abs(wdiff2)
-            scale_factor2[scale_factor2 == 0] = 1
-            abswdiff2 = wdiff2 / scale_factor2
-
-            turning_points = np.union1d(
-                    np.where(np.array([abswdiff[i] != abswdiff[i + 1] for i in range(abswdiff.size - 1)]))[0] + 1,
-                    np.where(np.array([abswdiff2[i] != abswdiff2[i + 1] for i in range(abswdiff2.size - 1)]))[0] + 2)
-            tp_center = np.abs(center - turning_points).argmin()
-
-            if tp_center < 2 or tp_center > turning_points.size - 2:
-                if is_local_min:  # all differences are negative until center, then positive
-                    # find the last difference before the center that is positive
-                    wleft = center - np.where(wdiff[:center - 1][::-1] > 0)[0][0]
-                    # find the first difference after the center that is negative
-                    wright = center + np.where(wdiff[center + 1:] < 0)[0][0]
-                else:  # all differences are positive until center, then negative
-                    # find the last difference before the center that is negative
-                    wleft = center - np.where(wdiff[:center - 1][::-1] < 0)[0][0]
-                    # find the first difference after the center that is positive
-                    wright = center + np.where(wdiff[center + 1:] > 0)[0][0]
-            else:
-                wleft = turning_points[tp_center - 2] + (center - turning_points[tp_center - 2]) // 2
-                wright = turning_points[tp_center + 2] + (turning_points[tp_center + 2] - center) // 2
-
-            return wleft, wright
-
-        if centers is None:
-            centers = events.min(axis=0).argmin(axis=0)
-        elif not isinstance(centers, np.ndarray):
-            raise TypeError("centers must be a NumPy array")
-        elif not np.issubdtype(centers.dtype, np.integer):
-            raise TypeError("centers must be an integral array")
-        elif centers.size != events.shape[2]:
-            raise ValueError("centers length must match num_events")
-
-        erased_events = events.copy().astype(np.float64)
-
-        for k in range(events.shape[2]):
-            event = erased_events[:, :, k]
-
-            for j, channel_window in enumerate(event):
-                wl, wr = _find_left_right(channel_window, center=centers[k])
-
-                exes = np.hstack((np.arange(wl), np.arange(wr, channel_window.size)))
-                whys = channel_window[exes]
-                g = scipy.interpolate.interp1d(exes, whys, kind)
-
-                event[j, :] = g(np.arange(channel_window.size))
-                event[j, wl:wr] += 3 * np.random.randn(wr - wl)
-
-        return erased_events.astype(events.dtype)
-
-    def erase_unit(self, unit, kind="cubic"):
-        """Remove all events for a given unit.
-
-        Parameters
-        ----------
-        unit : int
-            Cluster ID of unit to erase events from.
-        kind : str, optional
-        """
-
-        events = self._dataset.unit_windows(unit, self._samples_before, self._samples_after)
-        event_times = self._dataset.unit_firing_times(unit)
-
-        channels = self._dataset.unit_channels(unit=unit,
-                                               threshold=self._event_threshold,
-                                               samples_before=self._samples_before,
-                                               samples_after=self._samples_after)
-
-        erased_events = self.erase_events(events[channels, :], centers=np.tile(self._samples_before, events.shape[2]),
-                                          kind=kind)
-
-        # write data to disk
-        for k, t in enumerate(event_times):
-            samples = np.arange(t - self._samples_before, t + self._samples_after + 1)
-            self._dataset.write_roi(channels, samples, erased_events[:, :, k])
-
-        # erase record from annotation
-        ann = self._dataset.annotations
-        self._dataset._annotations = ann.drop(ann[ann.cluster == unit].index)
+    # def erase_unit(self, unit, kind="cubic"):
+    #     """Remove all events for a given unit.
+    #
+    #     Parameters
+    #     ----------
+    #     unit : int
+    #         Cluster ID of unit to erase events from.
+    #     kind : str, optional
+    #     """
+    #
+    #     events = self._dataset.unit_windows(unit, self._samples_before, self._samples_after)
+    #     event_times = self._dataset.unit_firing_times(unit)
+    #
+    #     channels = self._dataset.unit_channels(unit=unit,
+    #                                            samples_before=self._samples_before,
+    #                                            samples_after=self._samples_after)
+    #
+    #     erased_events = self.erase_events(events[channels, :], centers=np.tile(self._samples_before, events.shape[2]),
+    #                                       kind=kind)
+    #
+    #     # write data to disk
+    #     for k, t in enumerate(event_times):
+    #         samples = np.arange(t - self._samples_before, t + self._samples_after + 1)
+    #         self._dataset.write_roi(channels, samples, erased_events[:, :, k])
+    #
+    #     # erase record from annotation
+    #     ann = self._dataset.annotations
+    #     self._dataset._annotations = ann.drop(ann[ann.cluster == unit].index)
 
     def insert_unit(self, events, event_times, channels, true_unit, new_unit=None):
         """Insert a new unit into the data.
@@ -322,6 +314,12 @@ class SVDGenerator(HybridEventGenerator):
         if new_unit is None:
             new_unit = self._dataset.annotations.cluster.max() + 1
 
+        if not self._dataset.isopen:
+            close_after = True
+            self.dataset.open_raw("r+")
+        else:
+            close_after = False
+
         # write data to disk
         for k, t in enumerate(event_times):
             samples = np.arange(t - self._samples_before, t + self._samples_after + 1)
@@ -359,6 +357,9 @@ class SVDGenerator(HybridEventGenerator):
         au.index = np.arange(au.shape[0])
 
         self._dataset._artificial_units = au
+
+        if close_after:
+            self._dataset.close_raw()
 
     def jitter_events(self, event_times, jitter_factor, isi=2):
         """
@@ -412,7 +413,7 @@ class SVDGenerator(HybridEventGenerator):
         return jittered_times
 
     @staticmethod
-    def scale_events(events, scale_min=0.66, scale_max=1.5):
+    def scale_events(events, scale_min=0.98, scale_max=1.02):
         """Randomly scale events.
 
         Parameters
@@ -480,22 +481,23 @@ class SVDGenerator(HybridEventGenerator):
             else:  # give up
                 shift_factor = None
 
-            # channel shift places events outside of probe range
-            if not (shifted_channels.min() > -1 and shifted_channels.max() < self.probe.channel_map.size):
-                shift_factor = None
+            if shift_factor is not None:
+                # channel shift places events outside of probe range
+                if not (shifted_channels.min() > -1 and shifted_channels.max() < self.probe.channel_map.size):
+                    shift_factor = None
 
-            # channel shift places events on unconnected channels
-            if np.intersect1d(shifted_channels, self.probe.channel_map[~self.probe.connected]).size != 0:
-                shift_factor = None
+                # channel shift places events on unconnected channels
+                if np.intersect1d(shifted_channels, self.probe.channel_map[~self.probe.connected]).size != 0:
+                    shift_factor = None
 
-            channel_distance = scipy.spatial.distance.pdist(
-                    self.probe.channel_positions[inverse_channel_map[channels], :])
-            shifted_distance = scipy.spatial.distance.pdist(
-                    self.probe.channel_positions[inverse_channel_map[shifted_channels], :])
+                channel_distance = scipy.spatial.distance.pdist(
+                        self.probe.channel_positions[inverse_channel_map[channels], :])
+                shifted_distance = scipy.spatial.distance.pdist(
+                        self.probe.channel_positions[inverse_channel_map[shifted_channels], :])
 
-            # channel shift alters spatial relationship between channels
-            if not np.isclose(channel_distance, shifted_distance).all():
-                shift_factor = None
+                # channel shift alters spatial relationship between channels
+                if not np.isclose(channel_distance, shifted_distance).all():
+                    shift_factor = None
 
         # shift factor was originally None or manual shift failed
         if shift_factor is None:

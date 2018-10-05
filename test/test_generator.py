@@ -1,7 +1,9 @@
 from context import *
 
-from hybridfactory.data import dataset
-from hybridfactory.probes import probe
+import scipy.spatial.distance
+
+from hybridfactory.data import dataset as dset
+from hybridfactory.probes import probe as prb
 from hybridfactory.generate import generator
 
 class TestGenerateHybridJRCLUST:
@@ -10,19 +12,58 @@ class TestGenerateHybridJRCLUST:
         self.filename = op.join(self.testdir, "anm420712_20180802_ch0-119bank1_ch120-382bank0_g0_t2.imec.ap.bin")
         self.dtype = np.int16
         self.sample_rate = 30000
-        self.probe = probe.neuropixels3a()
-        self.source = dataset.new_annotated_dataset(self.filename, self.dtype,
+        self.probe = prb.neuropixels3a()
+        self.source = dset.new_annotated_dataset(self.filename, self.dtype,
                                                  self.sample_rate, self.probe)
         hybrid_dir = op.join(self.testdir, "hybrid")
 
-        self.hybrid = dataset.new_hybrid_dataset(self.source, hybrid_dir, copy=False)
+        self.hybrid = dset.new_hybrid_dataset(self.source, hybrid_dir, copy=False)
+        self.test_unit = 309
 
     def test_svd_generator(self):
-        dset = self.hybrid
-        event_threshold = -290
-        samples_before = 17
-        samples_after = 23
-        svdgen = generator.SVDGenerator(dset, event_threshold, samples_before, samples_after)
-        events = svdgen.construct_events(1291, 3)
+        hybrid = self.hybrid
+        test_unit = self.test_unit
+        samples_before = 40
+        samples_after = 40
+        svdgen = generator.SVDGenerator(hybrid, samples_before, samples_after)
 
-        assert(events.shape == (4, 41, 572))
+        events = svdgen.construct_events(test_unit, 3)
+        assert(events.shape == (4, 81, 2476))
+
+        # scale events
+        scaled_events = svdgen.scale_events(events)
+        assert((scaled_events[:, 0, :] == 0).all())
+        assert((scaled_events[:, 0, :] == scaled_events[:, -1, :]).all())
+
+        # jitter times
+        event_times = hybrid.unit_firing_times(test_unit)
+        jittered_times = svdgen.jitter_events(event_times, 100)
+        timediffs = np.abs(jittered_times[:, np.newaxis] - event_times[np.newaxis, :]).ravel()
+        # a vanishingly small number of events in the interspike interval
+        assert(np.count_nonzero(timediffs < hybrid.sample_rate/1000)/timediffs.size < 1e-5)
+        assert(jittered_times.size <= events.shape[2])
+
+        # generate synthetic firing times
+        times = svdgen.synthetic_firing_times(60, 0)
+        assert(times.size == 36000)
+        assert((np.diff(np.sort(times)) == 500).all())
+
+        # shift channels
+        channels = hybrid.unit_channels(test_unit)
+        shifted_channels = svdgen.shift_channels(channels, 100)
+        channel_pdist = scipy.spatial.distance.pdist(hybrid.probe.channel_coordinates(channels))
+        shifted_pdist = scipy.spatial.distance.pdist(hybrid.probe.channel_coordinates(shifted_channels))
+        assert(np.isclose(channel_pdist, shifted_pdist).all())
+
+        # get random channel shift
+        shifted_channels = svdgen.shift_channels(channels)
+        channel_pdist = scipy.spatial.distance.pdist(hybrid.probe.channel_coordinates(channels))
+        shifted_pdist = scipy.spatial.distance.pdist(hybrid.probe.channel_coordinates(shifted_channels))
+        assert(np.isclose(channel_pdist, shifted_pdist).all())
+
+        # insert units
+        n_events = jittered_times.size
+        events = events[:, :, np.random.choice(events.shape[2], n_events, replace=False)]
+        svdgen.insert_unit(events, jittered_times, shifted_channels, true_unit=test_unit)
+        assert((hybrid.artificial_units.timestep == np.sort(jittered_times)).all())
+        assert((hybrid.artificial_units.true_unit == test_unit).all())

@@ -112,9 +112,9 @@ def _legal_params():
                        "amplitude_scale_max": 1.,                        # positive float
                        "samples_before": 40,                             # positive int
                        "samples_after": 40,                              # positive int
-                       "event_threshold": -30,                           # negative int
-                       "copy": False,                                    # bool
-                       "erase": False}                                   # bool
+                       # "event_threshold": -30,                           # negative int # deprecated
+                       "copy": False}                                    # bool
+                       # "erase": False}                                   # bool # not ready
 
     return required_params, optional_params
 
@@ -239,8 +239,8 @@ def load_params(config):
         param_val = params.__dict__[param]
 
         # check types
-        if param in ("random_seed", "num_singular_values", "jitter_factor", "samples_before", "samples_after",
-                     "event_threshold") and not isinstance(param_val, numbers.Integral):
+        if param in ("random_seed", "num_singular_values", "jitter_factor",
+                     "samples_before", "samples_after") and not isinstance(param_val, numbers.Integral):
             _err_exit(f"parameter '{param}' must be an integer")
         elif param == "channel_shift" and param_val is not None and not isinstance(param_val, numbers.Integral):
             _err_exit(f"parameter '{param}' must be None or a nonnegative integer")
@@ -261,8 +261,6 @@ def load_params(config):
             _err_exit(f"parameter '{param}' must be a positive integer")
         elif param == "jitter_factor" and param_val < 0:
             _err_exit(f"parameter '{param}' must be a nonnegative integer")
-        elif param == "event_threshold" and param_val >= 0:
-            _err_exit(f"parameter '{param}' must be a negative integer")
         elif param.startswith("amplitude_scale") and param_val <= 0:
             _err_exit("parameter '{param}' must be a positive float")
         elif param == "channel_shift" and param_val is not None and param_val < 0:
@@ -334,7 +332,7 @@ def generate_hybrid(args):
     _log("Creating target dataset", params.verbose, in_progress=True)
     try:
         target = hybridfactory.data.dataset.new_hybrid_dataset(source, output_directory=params.output_directory,
-                                                         copy=params.copy, create=True, transform=None)
+                                                               copy=params.copy, create=True, transform=None)
     except (TypeError, ValueError) as err:
         _err_exit(f"Error: {str(err)}")
     _log("done", params.verbose)
@@ -344,9 +342,8 @@ def generate_hybrid(args):
 
     # create the hybrid data generator
     generator = hybridfactory.generate.generator.SVDGenerator(dataset=target,
-                                                        event_threshold=params.event_threshold,
-                                                        samples_before=params.samples_before,
-                                                        samples_after=params.samples_after)
+                                                              samples_before=params.samples_before,
+                                                              samples_after=params.samples_after)
 
     for k, unit_id in enumerate(params.ground_truth_units):
         # generate artificial events for this unit
@@ -355,7 +352,6 @@ def generate_hybrid(args):
         # find the channels for this unit according to our threshold
         _log(f"\tFinding channels to shift", params.verbose, in_progress=True)
         unit_channels = target.unit_channels(unit=unit_id,
-                                             threshold=params.event_threshold,
                                              samples_before=params.samples_before,
                                              samples_after=params.samples_after)
         if unit_channels.size == 0:
@@ -412,11 +408,11 @@ def generate_hybrid(args):
 
         _log("done", params.verbose)
 
-        if params.erase:  # erase unit
-            _log("\tErasing original unit", params.verbose, in_progress=True)
-            generator.erase_unit(unit=unit_id,
-                                 kind="cubic")
-            _log("done", params.verbose)
+        # if params.erase:  # erase unit
+        #     _log("\tErasing original unit", params.verbose, in_progress=True)
+        #     generator.erase_unit(unit=unit_id,
+        #                          kind="cubic")
+        #     _log("done", params.verbose)
 
         _log("\tInserting artificial unit", params.verbose, in_progress=True)
         generator.insert_unit(events=artificial_events,

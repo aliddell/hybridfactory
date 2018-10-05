@@ -1,8 +1,11 @@
 # editor files
 .idea/
 .ipynb_checkpoints/
+.spyproject/
 .vscode/
 __pycache__/
+*#
+.#*
 
 # built documentation
 docs/build
