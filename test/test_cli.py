@@ -11,7 +11,7 @@ modbase = op.join(testbase, "cli")
 class TestCLIJRC:
     def setup(self):
         self.testdir = op.join(modbase, "fromjrclust")
-        sys.argv = [sys.argv[0]] + ["generate", op.join(self.testdir, "params.py")]
+        sys.argv = [sys.argv[0]] + ["generate", op.join(self.testdir, "params.py"), "--silent"]
         self.hybrid_out = op.join(self.testdir, "hybrid", "anm420712_20180802_ch0-119bank1_ch120-382bank0_g0_t2.imec.ap.GT.bin")
 
         cli._main()

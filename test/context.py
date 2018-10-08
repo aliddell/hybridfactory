@@ -1,5 +1,6 @@
 # Copyright (C) 2018 Vidrio Technologies. All rights reserved.
 
+import hashlib
 import os
 from os import path as op
 import sys
