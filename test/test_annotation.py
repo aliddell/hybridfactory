@@ -8,7 +8,17 @@ modbase = op.join(testbase, "annotation")
 
 class TestLoadKilosortRez:
     def setup(self):
-        self.ann = annotation.kilosort_from_rez(op.join(modbase, "fromrez"), "eMouse-rez.mat")
+        # set (and create) directory
+        self.testdir = op.join(modbase, "TestLoadKilosortRez")
+        if not op.isdir(self.testdir):
+            os.makedirs(self.testdir)
+        # link over files if necessary
+        sourcefile = op.join(data_sources, "kilosort1", "eMouse", "rez.mat")
+        self.testfile = op.join(self.testdir, "rez.mat")
+        if not op.isfile(self.testfile):
+            os.link(sourcefile, self.testfile)
+        
+        self.ann = annotation.kilosort_from_rez(self.testdir, "rez.mat")
 
     def test_load_success(self):
         assert(isinstance(self.ann, pd.DataFrame))
@@ -37,11 +47,25 @@ class TestLoadKilosortRez:
         assert(timesteps[0] == timesteps.min() == 129)
         assert(timesteps[timesteps.last_valid_index()] == timesteps.max() == 24999766)
         assert(timesteps.unique().size == 168310)
+        
+    def teardown(self):
+        if op.isfile(self.testfile):
+            os.unlink(self.testfile)
 
 
 class TestLoadKilosort2Rez:
     def setup(self):
-        self.ann = annotation.kilosort_from_rez(op.join(modbase, "fromrez"), "rez.mat")
+        # set (and create) directory
+        self.testdir = op.join(modbase, "TestLoadKilosort2Rez")
+        if not op.isdir(self.testdir):
+            os.makedirs(self.testdir)
+        # link over files if necessary
+        sourcefile = op.join(data_sources, "kilosort2", "Hopkins", "rez.mat")
+        self.testfile = op.join(self.testdir, "rez.mat")
+        if not op.isfile(self.testfile):
+            os.link(sourcefile, self.testfile)
+        
+        self.ann = annotation.kilosort_from_rez(self.testdir, "rez.mat")
 
     def test_load_success(self):
         assert(isinstance(self.ann, pd.DataFrame))
@@ -71,11 +95,29 @@ class TestLoadKilosort2Rez:
         assert(timesteps[0] == timesteps.min() == 135)
         assert(timesteps[timesteps.last_valid_index()] == timesteps.max() == 113208737)
         assert(timesteps.unique().size == 8548226)
+        
+    def teardown(self):
+        if op.isfile(self.testfile):
+            os.unlink(self.testfile)
 
 
 class TestLoadKilosortPhy: # identical to Kilosort2Rez
     def setup(self):
-        self.ann = annotation.kilosort_from_phy(op.join(modbase, "fromphy"))
+        # set (and create) directory
+        self.testdir = op.join(modbase, "TestLoadKilosortPhy")
+        if not op.isdir(self.testdir):
+            os.makedirs(self.testdir)
+        # link over files if necessary
+        self.testfiles = []
+        for fn in ("spike_times.npy", "spike_clusters.npy",
+                   "spike_templates.npy"):
+            sourcefile = op.join(data_sources, "kilosort2", "Hopkins", fn)
+            self.testfiles.append(op.join(self.testdir, fn))
+
+            if not op.isfile(self.testfiles[-1]):
+                os.link(sourcefile, self.testfiles[-1])
+        
+        self.ann = annotation.kilosort_from_phy(self.testdir)
 
     def test_load_success(self):
         assert(isinstance(self.ann, pd.DataFrame))
@@ -105,11 +147,26 @@ class TestLoadKilosortPhy: # identical to Kilosort2Rez
         assert(timesteps[0] == timesteps.min() == 135)
         assert(timesteps[timesteps.last_valid_index()] == timesteps.max() == 113208737)
         assert(timesteps.unique().size == 8548226)
+        
+    def teardown(self):
+        for fn in self.testfiles:
+            if op.isfile(fn):
+                os.unlink(fn)
 
 
 class TestJRCLUSTFromMatfile:
     def setup(self):
-        self.ann = annotation.jrclust_from_matfile(op.join(modbase, "fromjrclust"), "testset_jrc.mat")
+        # set (and create) directory
+        self.testdir = op.join(modbase, "TestJRCLUSTFromMatfile")
+        if not op.isdir(self.testdir):
+            os.makedirs(self.testdir)
+        # link over files if necessary
+        sourcefile = op.join(data_sources, "jrclust", "testset", "testset_jrc.mat")
+        self.testfile = op.join(self.testdir, "testset_jrc.mat")
+        if not op.isfile(self.testfile):
+            os.link(sourcefile, self.testfile)
+        
+        self.ann = annotation.jrclust_from_matfile(self.testdir, "testset_jrc.mat")
 
     def test_load_success(self):
         assert(isinstance(self.ann, pd.DataFrame))
@@ -138,11 +195,27 @@ class TestJRCLUSTFromMatfile:
         assert(timesteps[0] == timesteps.min() == 125)
         assert(timesteps[timesteps.last_valid_index()] == timesteps.max() == 104478015)
         assert(timesteps.unique().size == 4214174)
+        
+    def teardown(self):
+        if op.isfile(self.testfile):
+            os.unlink(self.testfile)
 
 
 class TestJRCLUSTIncidentals:
     def setup(self):
-        self.testdir = op.join(modbase, "fromjrclust")
+        # set (and create) directory
+        self.testdir = op.join(modbase, "TestJRCLUSTIncidentals")
+        if not op.isdir(self.testdir):
+            os.makedirs(self.testdir)
+        # link over files if necessary
+        self.testfiles = []
+        for fn in ("testset_jrc.mat", "testset_spkfet.jrc",
+                   "testset_spkwav.jrc", "testset_spkraw.jrc"):
+            sourcefile = op.join(data_sources, "jrclust", "testset", fn)
+            self.testfiles.append(op.join(self.testdir, fn))
+
+            if not op.isfile(self.testfiles[-1]):
+                os.link(sourcefile, self.testfiles[-1])
 
     def test_load_features(self):
         features = annotation.load_jrc_features(self.testdir, "testset_spkfet.jrc")
@@ -164,12 +237,39 @@ class TestJRCLUSTIncidentals:
 
         raw2 = annotation.load_jrc_raw(self.testdir)
         assert(np.linalg.norm(raw - raw2) == 0)
+        
+    def teardown(self):
+        for fn in self.testfiles:
+            if op.isfile(fn):
+                os.unlink(fn)
 
 
 class TestLoadKilosortTemplates:
     def setup(self):
-        self.phydir = op.join(modbase, "fromphy")
-        self.rezdir = op.join(modbase, "fromrez")
+        # set (and create) directories
+        self.testdir = op.join(modbase, "TestLoadKilosortTemplates")
+        self.phydir = op.join(self.testdir, "fromphy")
+        self.rezdir = op.join(self.testdir, "fromrez")
+
+        if not op.isdir(self.phydir):
+            os.makedirs(self.phydir)
+        if not op.isdir(self.rezdir):
+            os.makedirs(self.rezdir)
+
+        # link over files if necessary
+        self.testfiles = [op.join(self.rezdir, "rez.mat"), # Hopkins rez
+                          op.join(self.phydir, "templates.npy"),
+                          op.join(self.testdir, "rez.mat")] # eMouse rez
+
+        if not op.isfile(self.testfiles[0]):
+            os.link(op.join(data_sources, "kilosort2", "Hopkins", "rez.mat"),
+                    self.testfiles[0])
+        if not op.isfile(self.testfiles[1]):
+            os.link(op.join(data_sources, "kilosort2", "Hopkins",
+                            "templates.npy"), self.testfiles[1])
+        if not op.isfile(self.testfiles[2]):
+            os.link(op.join(data_sources, "kilosort1", "eMouse",
+                            "rez.mat"), self.testfiles[2])
 
     def test_equivalent(self):
         fromphy = annotation.load_kilosort_templates(self.phydir)
@@ -177,12 +277,30 @@ class TestLoadKilosortTemplates:
         assert(np.linalg.norm(fromphy - fromrez) < 1e-5)
 
     def test_ks1(self):
-        fromrez = annotation.load_kilosort_templates(self.rezdir, "eMouse-rez.mat")
+        fromrez = annotation.load_kilosort_templates(self.testdir, "rez.mat")
+        
+    def teardown(self):
+        for fn in self.testfiles:
+            if op.isfile(fn):
+                os.unlink(fn)
 
 
 class TestLoadGroundTruthMatrix:
     def setup(self):
-        self.testdir = op.join(modbase, "fromgroundtruth")
+        # set (and create) directory
+        self.testdir = op.join(modbase, "TestLoadGroundTruthMatrix")
+        if not op.isdir(self.testdir):
+            os.makedirs(self.testdir)
+        # link over files if necessary
+        self.testfiles = [op.join(self.testdir, "firings_true.npy"),
+                          op.join(self.testdir, "gt.npy")]
+
+        if not op.isfile(self.testfiles[0]):
+            os.link(op.join(data_sources, "groundtruth", "firings_true.npy"),
+                    self.testfiles[0])
+        if not op.isfile(self.testfiles[1]):
+            os.link(op.join(data_sources, "groundtruth", "firings_true.npy"),
+                            self.testfiles[1])
 
     def test_with_filename(self):
         gt = annotation.load_ground_truth_matrix(self.testdir, "gt.npy")
@@ -191,15 +309,37 @@ class TestLoadGroundTruthMatrix:
     def test_no_filename(self):
         gt = annotation.load_ground_truth_matrix(self.testdir)
         assert(gt.size == 0)
+        
+    def teardown(self):
+        for fn in self.testfiles:
+            if op.isfile(fn):
+                os.unlink(fn)
 
 
 class TestMiscFailures:
     def setup(self):
-        self.testdir = op.join(modbase, "miscfailures")
+        # set (and create) directory
+        self.testdir = op.join(modbase, "TestMiscFailures")
+        if not op.isdir(self.testdir):
+            os.makedirs(self.testdir)
+        # link over files if necessary
+        self.testfiles = [op.join(self.testdir, "rez.mat"), # v6 MAT file
+                          op.join(self.testdir, "testset1_jrc.mat"),
+                          op.join(self.testdir, "testset2_jrc.mat")]
+
+        if not op.isfile(self.testfiles[0]):
+            os.link(op.join(data_sources, "misc", "oldstyle-rez.mat"),
+                    self.testfiles[0])
+        if not op.isfile(self.testfiles[1]):
+            os.link(op.join(data_sources, "jrclust", "testset",
+                            "testset_jrc.mat"), self.testfiles[1])
+        if not op.isfile(self.testfiles[2]):
+            os.link(op.join(data_sources, "jrclust", "testset",
+                            "testset_jrc.mat"), self.testfiles[2])
 
     def test_oldstyle_matfile(self):
         with pytest.raises(ValueError): # contains a v6 MAT file
-            annotation.kilosort_from_rez(self.testdir, "oldstyle-rez.mat")
+            annotation.kilosort_from_rez(self.testdir, "rez.mat")
 
     def test_ambiguous_jrcfile(self):
         with pytest.raises(ValueError): # contains multiple _jrc.mat files
@@ -208,3 +348,8 @@ class TestMiscFailures:
     def test_no_source_for_templates(self):
         with pytest.raises(ValueError):
             annotation.load_kilosort_templates(self.testdir)
+            
+    def teardown(self):
+        for fn in self.testfiles:
+            if op.isfile(fn):
+                os.unlink(fn)

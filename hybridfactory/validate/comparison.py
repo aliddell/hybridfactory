@@ -40,7 +40,8 @@ class PairComparison(object):
         if td.probe != hd.probe:
             return "probe mismatch"
 
-        if not np.isin(np.unique(hd.artificial_units.true_unit), np.unique(td.annotations.cluster)).all():
+        if not np.isin(np.unique(hd.artificial_units.true_unit),
+                       np.unique(td.annotations.cluster)).all():
             return "hybrid true_units missing from true annotations"
 
         return "ok"
@@ -340,9 +341,10 @@ def new_template_pair_comparison(true_dataset, hybrid_dataset, firing_matrix):
 
     # don't try this at home
     hybrid_dataset.__class__ = HybridDataSet
-    hybrid_dataset._artificial_units = pd.DataFrame(OrderedDict([("timestep", firing_matrix[1, :]),
-                                                                 ("true_unit", firing_matrix[2, :]),
-                                                                 ("center_channel", firing_matrix[0, :])]),
-                                                    dtype=np.int64)
+    hybrid_dataset._artificial_units = pd.DataFrame(
+            OrderedDict([("timestep", firing_matrix[1, :]),
+                         ("true_unit", firing_matrix[2, :]),
+                         ("center_channel", firing_matrix[0, :])]),
+            dtype=np.int64)
 
     return TemplatePairComparison(true_dataset, hybrid_dataset)

@@ -29,3 +29,4 @@ def md5sum(filename):
     return result.hexdigest()
 
 testbase = op.abspath(os.getenv("TESTBASE"))
+data_sources = op.join(testbase, "data_sources")
