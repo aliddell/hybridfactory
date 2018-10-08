@@ -27,28 +27,27 @@ class TestSVDGenerator:
         assert(self.events.shape == (4, 81, 2476))
 
     def test_scale_events(self):
-        events = self.events
-
-        # scale events
-        scaled_events = svdgen.scale_events(events)
+        scaled_events = svdgen.scale_events(self.events)
         assert((scaled_events[:, 0, :] == 0).all())
         assert((scaled_events[:, 0, :] == scaled_events[:, -1, :]).all())
 
-        # jitter times
-        event_times = hybrid.unit_firing_times(test_unit)
+    def test_jitter_times(self):
+        event_times = hybrid.unit_firing_times(self.test_unit)
         jittered_times = svdgen.jitter_events(event_times, 100)
         timediffs = np.abs(jittered_times[:, np.newaxis] - event_times[np.newaxis, :]).ravel()
         # a vanishingly small number of events in the interspike interval
         assert(np.count_nonzero(timediffs < hybrid.sample_rate/1000)/timediffs.size < 1e-5)
         assert(jittered_times.size <= events.shape[2])
 
-        # generate synthetic firing times
+        self.jittered_times = jittered_times
+
+    def test_synthetic_times(self):
         times = svdgen.synthetic_firing_times(60, 0)
         assert(times.size == 36000)
         assert((np.diff(np.sort(times)) == 500).all())
 
-        # shift channels
-        channels = hybrid.unit_channels(test_unit)
+    def test_shift_channels(self):
+        channels = self.hybrid.unit_channels(self.test_unit)
         shifted_channels = svdgen.shift_channels(channels, 100)
         channel_pdist = scipy.spatial.distance.pdist(hybrid.probe.channel_coordinates(channels))
         shifted_pdist = scipy.spatial.distance.pdist(hybrid.probe.channel_coordinates(shifted_channels))
@@ -60,13 +59,20 @@ class TestSVDGenerator:
         shifted_pdist = scipy.spatial.distance.pdist(hybrid.probe.channel_coordinates(shifted_channels))
         assert(np.isclose(channel_pdist, shifted_pdist).all())
 
-        # insert units
+        self.shifted_channels = shifted_channels
+
+    def test_insert_units(self):
+        jittered_times = self.jittered_times
+        shifted_channels = self.shifted_channels
+        hybrid = self.hybrid
+        test_unit = self.test_unit
+
         n_events = jittered_times.size
         events = events[:, :, np.random.choice(events.shape[2], n_events, replace=False)]
-        svdgen.insert_unit(events, jittered_times, shifted_channels, true_unit=test_unit)
+        self.svdgen.insert_unit(events, jittered_times, shifted_channels, true_unit=test_unit)
         assert((hybrid.artificial_units.timestep == np.sort(jittered_times)).all())
         assert((hybrid.artificial_units.true_unit == test_unit).all())
 
-        # reset
-        hybrid.reset(self.source)
-        assert(md5sum(self.filename), md5sum(hybrid.filename[0]))
+    def test_reset(self):
+        self.hybrid.reset(self.source)
+        assert(md5sum(self.filename), md5sum(self.hybrid.filename[0]))
