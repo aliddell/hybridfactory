@@ -669,7 +669,7 @@ def new_hybrid_dataset(source, output_directory, copy=True, create=True, transfo
 
     if copy:
         for k, ofn in enumerate(old_filenames):
-            shutil.copy2(ofn, new_filenames[k])
+            shutil.copyfile(ofn, new_filenames[k])
 
     return HybridDataSet(source, new_filenames)
 

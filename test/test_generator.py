@@ -22,7 +22,7 @@ class TestSVDGenerator:
         self.hybrid = dset.new_hybrid_dataset(self.source, hybrid_dir, copy=True)
         self.svdgen = generator.SVDGenerator(self.hybrid, samples_before=40, samples_after=40)
 
-    def construct_events(self):
+    def test_construct_events(self):
         self.events = svdgen.construct_events(test_unit, 3)
         assert(self.events.shape == (4, 81, 2476))
 
