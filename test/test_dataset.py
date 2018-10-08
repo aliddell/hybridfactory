@@ -119,7 +119,7 @@ class TestAnnotatedDatasetJRCLUST:
         source = self.dataset
 
         hybrid_dir = op.join(self.testdir, "hybrid")
-        hds = dset.new_hybrid_dataset(source, hybrid_dir, copy=False)
+        hds = dset.new_hybrid_dataset(source, hybrid_dir, copy=True)
 
         assert(op.basename(hds.filenames[0]) == op.basename(self.filename).replace(".bin", ".GT.bin"))
         assert(len(hds.artificial_units) == 0)
@@ -252,7 +252,7 @@ class TestAnnotatedDatasetKilosort:
         source = self.dataset
 
         hybrid_dir = op.join(self.testdir, "hybrid")
-        hds = dset.new_hybrid_dataset(source, hybrid_dir, copy=False)
+        hds = dset.new_hybrid_dataset(source, hybrid_dir, copy=True)
 
         assert(op.basename(hds.filenames[0]) == op.basename(self.filename).replace(".dat", ".GT.dat"))
         assert(len(hds.artificial_units) == 0)

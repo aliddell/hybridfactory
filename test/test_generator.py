@@ -6,7 +6,7 @@ from hybridfactory.data import dataset as dset
 from hybridfactory.probes import probe as prb
 from hybridfactory.generate import generator
 
-class TestGenerateHybridJRCLUST:
+class TestSVDGenerator:
     def setup(self):
         self.testdir = op.join(testbase, "generator", "fromjrclust")
         self.filename = op.join(self.testdir, "anm420712_20180802_ch0-119bank1_ch120-382bank0_g0_t2.imec.ap.bin")
@@ -15,20 +15,19 @@ class TestGenerateHybridJRCLUST:
         self.probe = prb.neuropixels3a()
         self.source = dset.new_annotated_dataset(self.filename, self.dtype,
                                                  self.sample_rate, self.probe)
-        hybrid_dir = op.join(self.testdir, "hybrid")
-
-        self.hybrid = dset.new_hybrid_dataset(self.source, hybrid_dir, copy=False)
         self.test_unit = 309
 
-    def test_svd_generator(self):
-        hybrid = self.hybrid
-        test_unit = self.test_unit
-        samples_before = 40
-        samples_after = 40
-        svdgen = generator.SVDGenerator(hybrid, samples_before, samples_after)
+        hybrid_dir = op.join(self.testdir, "hybrid")
 
-        events = svdgen.construct_events(test_unit, 3)
-        assert(events.shape == (4, 81, 2476))
+        self.hybrid = dset.new_hybrid_dataset(self.source, hybrid_dir, copy=True)
+        self.svdgen = generator.SVDGenerator(self.hybrid, samples_before=40, samples_after=40)
+
+    def construct_events(self):
+        self.events = svdgen.construct_events(test_unit, 3)
+        assert(self.events.shape == (4, 81, 2476))
+
+    def test_scale_events(self):
+        events = self.events
 
         # scale events
         scaled_events = svdgen.scale_events(events)
@@ -67,3 +66,7 @@ class TestGenerateHybridJRCLUST:
         svdgen.insert_unit(events, jittered_times, shifted_channels, true_unit=test_unit)
         assert((hybrid.artificial_units.timestep == np.sort(jittered_times)).all())
         assert((hybrid.artificial_units.true_unit == test_unit).all())
+
+        # reset
+        hybrid.reset(self.source)
+        assert(md5sum(self.filename), md5sum(hybrid.filename[0]))
