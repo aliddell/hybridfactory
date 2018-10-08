@@ -43,9 +43,9 @@ test-nix:
   - source venv/bin/activate
   - 'echo TESTBASE=/data/hybridfactory >.env'
   script:
-  - pip3 install tox flake8
+  - pip3 install tox
   # - pip install pytest pytest-coverage python-dotenv -r requirements.txt
-  - tox -e py36,flake8
+  - tox -e py36
   # - pytest -s --cov-conf test/.coveragerc --cov=hybridfactory test/
   coverage: '/TOTAL.+?(\d+)%/'
 
