@@ -9,12 +9,26 @@ modbase = op.join(testbase, "dataset")
 
 class TestAnnotatedDatasetJRCLUST:
     def setup(self):
-        self.testdir = op.abspath(op.join(modbase, "fromjrclust"))
-        self.filename = op.join(self.testdir, "anm420712_20180802_ch0-119bank1_ch120-382bank0_g0_t2.imec.ap.bin")
+        # set (and create) directory
+        self.testdir = op.abspath(op.join(modbase, "TestAnnotatedDatasetJRCLUST"))
+        if not op.isdir(self.testdir):
+            os.makedirs(self.testdir)
+
+        # link over files if necessary
+        bf = "anm420712_20180802_ch0-119bank1_ch120-382bank0_g0_t2.imec.ap.bin"
+        matfile = bf.replace(".bin", "_jrc.mat")
+        self.testfiles = []
+
+        for fn in (bf, matfile):
+            sourcefile = op.join(data_sources, "jrclust", "anm420712", fn)
+            self.testfiles.append(op.join(self.testdir, fn))
+            if not op.isfile(self.testfiles[-1]):
+                os.link(sourcefile, self.testfiles[-1])
+
         self.dtype = np.int16
         self.sample_rate = 30000
         self.probe = prb.neuropixels3a()
-        self.dataset = dset.new_annotated_dataset(self.filename, self.dtype,
+        self.dataset = dset.new_annotated_dataset(self.testfiles[0], self.dtype,
                                                   self.sample_rate, self.probe)
 
     def test_load_success(self):
@@ -23,13 +37,13 @@ class TestAnnotatedDatasetJRCLUST:
         assert(dataset.dtype == self.dtype)
 
         assert(len(dataset.filenames) == 1)
-        assert(op.abspath(dataset.filenames[0]) == op.abspath(self.filename))
+        assert(op.abspath(dataset.filenames[0]) == op.abspath(self.testfiles[0]))
 
         assert(not dataset.isopen)
 
         metadata = dataset.metadata
         assert(metadata.shape[0] == 1)
-        assert(op.abspath(metadata.filename[0]) == op.abspath(self.filename))
+        assert(op.abspath(metadata.filename[0]) == op.abspath(self.testfiles[0]))
         assert(metadata.start_time[0] == 0)
         assert(metadata.samples[0] == dataset.last_sample() == 18000000)
 
@@ -121,7 +135,7 @@ class TestAnnotatedDatasetJRCLUST:
         hybrid_dir = op.join(self.testdir, "hybrid")
         hds = dset.new_hybrid_dataset(source, hybrid_dir, copy=True)
 
-        assert(op.basename(hds.filenames[0]) == op.basename(self.filename).replace(".bin", ".GT.bin"))
+        assert(op.basename(hds.filenames[0]) == op.basename(self.testfiles[0]).replace(".bin", ".GT.bin"))
         assert(len(hds.artificial_units) == 0)
 
         hds.export_artificial_units(op.join(hybrid_dir, "au.csv"))
@@ -152,14 +166,36 @@ class TestAnnotatedDatasetJRCLUST:
         assert((dload.metadata == dataset.metadata).all().all())
         assert((dload.annotations == dataset.annotations).all().all())
 
+    def teardown(self):
+        self.testfiles += [op.join(self.testdir, "metadata-test-save.csv"),
+                           op.join(self.testdir, "annotations-test-save.csv"),
+                           op.join(self.testdir, "probe-test-save.csv"),
+                           op.join(self.testdir, "dtype-test-save.csv")]
+
+        for fn in self.testfiles:
+            if op.isfile(fn):
+                os.unlink(fn)
+
 class TestAnnotatedDatasetKilosort:
     def setup(self):
-        self.testdir = op.abspath(op.join(modbase, "fromkilosort"))
-        self.filename = op.join(self.testdir, "sim_binary.dat")
+        # set (and create) directory
+        self.testdir = op.abspath(op.join(modbase, "TestAnnotatedDatasetKilosort"))
+        if not op.isdir(self.testdir):
+            os.makedirs(self.testdir)
+
+        # link over files if necessary
+        self.testfiles = []
+
+        for fn in ("sim_binary.dat", "rez.mat"):
+            sourcefile = op.join(data_sources, "kilosort1", "eMouse", fn)
+            self.testfiles.append(op.join(self.testdir, fn))
+            if not op.isfile(self.testfiles[-1]):
+                os.link(sourcefile, self.testfiles[-1])
+
         self.dtype = np.int16
         self.sample_rate = 25000
         self.probe = prb.eMouse()
-        self.dataset = dset.new_annotated_dataset(self.filename, self.dtype,
+        self.dataset = dset.new_annotated_dataset(self.testfiles[0], self.dtype,
                                                   self.sample_rate, self.probe)
 
     def test_load_success(self):
@@ -168,13 +204,13 @@ class TestAnnotatedDatasetKilosort:
         assert(dataset.dtype == self.dtype)
 
         assert(len(dataset.filenames) == 1)
-        assert(op.abspath(dataset.filenames[0]) == op.abspath(self.filename))
+        assert(op.abspath(dataset.filenames[0]) == op.abspath(self.testfiles[0]))
 
         assert(not dataset.isopen)
 
         metadata = dataset.metadata
         assert(metadata.shape[0] == 1)
-        assert(op.abspath(metadata.filename[0]) == op.abspath(self.filename))
+        assert(op.abspath(metadata.filename[0]) == op.abspath(self.testfiles[0]))
         assert(metadata.start_time[0] == 0)
         assert(metadata.samples[0] == dataset.last_sample() == 25000000)
 
@@ -254,7 +290,7 @@ class TestAnnotatedDatasetKilosort:
         hybrid_dir = op.join(self.testdir, "hybrid")
         hds = dset.new_hybrid_dataset(source, hybrid_dir, copy=True)
 
-        assert(op.basename(hds.filenames[0]) == op.basename(self.filename).replace(".dat", ".GT.dat"))
+        assert(op.basename(hds.filenames[0]) == op.basename(self.testfiles[0]).replace(".dat", ".GT.dat"))
         assert(len(hds.artificial_units) == 0)
 
         hds.export_artificial_units(op.join(hybrid_dir, "au.csv"))
@@ -285,38 +321,58 @@ class TestAnnotatedDatasetKilosort:
         assert((dload.metadata == dataset.metadata).all().all())
         assert((dload.annotations == dataset.annotations).all().all())
 
+    def teardown(self):
+        self.testfiles += [op.join(self.testdir, "metadata-test-save.csv"),
+                           op.join(self.testdir, "annotations-test-save.csv"),
+                           op.join(self.testdir, "probe-test-save.csv"),
+                           op.join(self.testdir, "dtype-test-save.csv")]
+
+        for fn in self.testfiles:
+            if op.isfile(fn):
+                os.unlink(fn)
+
 
 class TestMiscFailures:
     def setup(self):
-        self.testdir = op.join(modbase, "miscfailures")
+        # set (and create) directory
+        self.testdir = op.abspath(op.join(modbase, "TestMiscFailures"))
+        if not op.isdir(self.testdir):
+            os.makedirs(self.testdir)
+
+        # link over files if necessary
+        sourcefile = op.join(data_sources, "kilosort1", "eMouse",
+                             "sim_binary.dat")
+        self.testfile = op.join(self.testdir, "sim_binary.dat")
+        if not op.isfile(self.testfile):
+            os.link(sourcefile, self.testfile)
 
     def test_dataset_constructor(self):
-        filename = op.join(self.testdir, "sim_binary.dat")
+        self.testfile = op.join(self.testdir, "sim_binary.dat")
         dtype = np.int16
         sample_rate = 25000
         probe = prb.eMouse()
         start_times = 0
 
         with pytest.raises(TypeError): # dtype fails
-            dset.DataSet(filename, "np.int16", sample_rate, probe, start_times)
+            dset.DataSet(self.testfile, "np.int16", sample_rate, probe, start_times)
 
         with pytest.raises(TypeError): # probe fails
-            dset.DataSet(filename, dtype, sample_rate, "probe", start_times)
+            dset.DataSet(self.testfile, dtype, sample_rate, "probe", start_times)
 
         with pytest.raises(TypeError): # sample rate fails: integer
-            dset.DataSet(filename, dtype, float(sample_rate), probe, start_times)
+            dset.DataSet(self.testfile, dtype, float(sample_rate), probe, start_times)
 
         with pytest.raises(ValueError): # sample rate fails: positive
-            dset.DataSet(filename, dtype, -sample_rate, probe, start_times)
+            dset.DataSet(self.testfile, dtype, -sample_rate, probe, start_times)
 
         with pytest.raises(IOError): # filenames
             dset.DataSet(None, dtype, sample_rate, probe, start_times)
 
         with pytest.raises(ValueError): # filenames/start times mismatch
-            dset.DataSet(filename, dtype, sample_rate, probe, [start_times, 0])
+            dset.DataSet(self.testfile, dtype, sample_rate, probe, [start_times, 0])
 
         with pytest.raises(TypeError): # start times fails: integer
-            dset.DataSet(filename, dtype, sample_rate, probe, 0.0)
+            dset.DataSet(self.testfile, dtype, sample_rate, probe, 0.0)
 
         with pytest.raises(ValueError): # start times fails: positive
-            dset.DataSet(filename, dtype, sample_rate, probe, -1)
+            dset.DataSet(self.testfile, dtype, sample_rate, probe, -1)
