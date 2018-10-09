@@ -115,7 +115,7 @@ See [params_example.py](https://gitlab.com/vidriotech/spiegel/hybridfactory/blob
   - `connected`: a 1-d array of `n` bools, with entry `k` being `True` if and
   only if channel `k` was used in the sorting.
   - `channel_positions`: an $`n \times 2`$ array of floats, with row `k`
-  holding the x and y coordinates of channel `k`.
+  holding the x and y coordinates of channel `channel_map[k]`.
   - `name` (optional): a string giving the model name of your probe.
   This is just decorative for now.
 
