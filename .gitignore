@@ -23,6 +23,7 @@ notebooks/demos/*_demo/
 params-*.py
 
 # testing
+.pytest_cache
 .cache
 .coverage
 .env

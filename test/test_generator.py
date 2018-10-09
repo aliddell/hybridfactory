@@ -17,21 +17,29 @@ class TestSVDGenerator:
                                                  self.sample_rate, self.probe)
         self.test_unit = 309
 
+        self.samples_before = self.samples_after = 40
+
         hybrid_dir = op.join(self.testdir, "hybrid")
 
         self.hybrid = dset.new_hybrid_dataset(self.source, hybrid_dir, copy=True)
-        self.svdgen = generator.SVDGenerator(self.hybrid, samples_before=40, samples_after=40)
+        self.svdgen = generator.SVDGenerator(self.hybrid,
+                                             samples_before=self.samples_before,
+                                             samples_after=self.samples_after)
         # construct events
         self.events = self.svdgen.construct_events(self.test_unit, 3)
         # jitter times
         self.event_times = self.hybrid.unit_firing_times(self.test_unit)
         self.jittered_times = self.svdgen.jitter_events(self.event_times, 100)
         # shift channels
-        self.channels = self.hybrid.unit_channels(self.test_unit)
+        self.channels = self.hybrid.unit_channels(self.test_unit,
+                                                  samples_before=self.samples_before,
+                                                  samples_after=self.samples_after)
         self.shifted_channels = self.svdgen.shift_channels(self.channels)
 
     def test_construct_events(self):
-        assert(self.events.shape == (4, 81, 2476))
+        assert(self.events.shape == (self.channels.shape,
+                                     self.samples_before + self.samples_after + 1,
+                                     2476))
 
     def test_scale_events(self):
         scaled_events = self.svdgen.scale_events(self.events)
