@@ -26,10 +26,8 @@ test-windows:
   - python -V               # Print out python version for debugging
   - '>>.env echo TESTBASE=F:/Tests/hybridfactory'
   script:
-  - pip3 install tox flake8
-  # - pip install pytest pytest-coverage python-dotenv -r requirements.txt
-  - tox -e py36,flake8
-  # - pytest -s --cov-conf test/.coveragerc --cov=hybridfactory test/
+  - pip3 install tox
+  - tox -e py36
   coverage: '/TOTAL.+?(\d+)%/'
 
 test-nix:
@@ -44,9 +42,7 @@ test-nix:
   - 'echo TESTBASE=/data/hybridfactory >.env'
   script:
   - pip3 install tox
-  # - pip install pytest pytest-coverage python-dotenv -r requirements.txt
   - tox -e py36
-  # - pytest -s --cov-conf test/.coveragerc --cov=hybridfactory test/
   coverage: '/TOTAL.+?(\d+)%/'
 
 wheelify:
