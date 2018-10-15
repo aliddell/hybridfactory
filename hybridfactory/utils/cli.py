@@ -22,7 +22,7 @@ from hybridfactory.generate.generator import NoEventException, RankDeficientExce
 from hybridfactory.probes.probe import Probe
 
 __author__ = "Alan Liddell <alan@vidriotech.com>"
-__version__ = "0.1.0-beta"
+__version__ = "0.1.0-beta1"
 
 SPIKE_LIMIT = 25000
 
@@ -464,12 +464,11 @@ def _main():
 
 
 def main():
-    if __name__ == "__main__":
         # noinspection PyBroadException
-        try:
-            _main()
-        except Exception as e:
-            err_msg = f"""This looks like a bug!
+    try:
+        _main()
+    except Exception as e:
+        err_msg = f"""This looks like a bug!
 
     Please send the following output to {__author__}:
 
@@ -479,4 +478,4 @@ def main():
         {str(e)}
     Traceback:
         {traceback.format_exc()}"""
-            _err_exit(err_msg)
+        _err_exit(err_msg)

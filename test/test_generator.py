@@ -37,7 +37,7 @@ class TestSVDGenerator:
         self.shifted_channels = self.svdgen.shift_channels(self.channels)
 
     def test_construct_events(self):
-        assert(self.events.shape == (self.channels.shape,
+        assert(self.events.shape == (self.channels.size,
                                      self.samples_before + self.samples_after + 1,
                                      2476))
 

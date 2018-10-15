@@ -12,6 +12,14 @@ hybridfactory.utils.cli module
     :undoc-members:
     :show-inheritance:
 
+hybridfactory.utils.tools module
+--------------------------------
+
+.. automodule:: hybridfactory.utils.tools
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 
 Module contents
 ---------------

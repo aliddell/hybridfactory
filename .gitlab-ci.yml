@@ -61,11 +61,9 @@ document:
   - virtualenv venv
   - source venv/bin/activate
   script:
-  - pip3 install sphinx sphinx-rtd-theme sphinxcontrib-napoleon
-  - sphinx-apidoc -f -o docs/source hybridfactory/
-  - cd docs
-  - make html
-  - mv build/html/ ../public/
+  - pip3 install tox
+  - tox -e doc
+  - mv docs/build/html/ ../public/
   artifacts:
     paths:
     - public

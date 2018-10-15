@@ -8,7 +8,7 @@ with open(readme, "r") as fh:
 
 setuptools.setup(
     name="hybridfactory",
-    version="0.1.0-beta",
+    version="0.1.0-beta1",
     packages=setuptools.find_packages(),
     url="https://gitlab.com/vidriotech/spiegel/hybridfactory",
     license="MIT",
