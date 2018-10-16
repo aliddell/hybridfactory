@@ -3,18 +3,39 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to hybridfactory's documentation!
-=========================================
+Hybrid Factory
+=============
 
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :hidden:
+
+   intro
+   cli
+   parameter-file
+
+.. contents::
+   :depth: 3
+
+.. _intro:
+
+.. include:: about.rst
+.. include:: getting-started.rst
+
+.. _cli:
+
+.. include:: cli.rst
+
+.. _parameter-file:
+
+.. include:: parameter-file.rst
+
+.. _algorithm:
+
+.. include:: algorithm.rst
 
 
-
-Indices and tables
-==================
+Index
+=====
 
 * :ref:`genindex`
-* :ref:`modindex`
 * :ref:`search`

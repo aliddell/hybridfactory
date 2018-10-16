@@ -1,5 +1,5 @@
-h5py==2.7.1
-numpy==1.14.0
-matplotlib==2.1.2
-pandas==0.22.0
-scipy==1.0.1
+h5py>=2.8
+numpy>=1.15
+matplotlib>=2.1
+pandas>=0.23
+scipy>=1.1

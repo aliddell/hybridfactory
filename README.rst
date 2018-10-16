@@ -14,13 +14,13 @@ Miniconda <https://conda.io/docs/user-guide/install/index.html>`__.
 Once you've done that, fire up your favorite terminal emulator (PowerShell or
 CMD on Windows, but we recommend CMD; iTerm2 or Terminal on Mac; lots of
 choices if you're on Linux, but you knew that) and navigate to the base
-directory of the repository (it should contain ``requirements.txt``).
+directory of the repository (it should contain ``environment.yml``).
 
 On UNIX variants, type:
 
 .. code:: bash
 
-    $ conda env create -n hybridfactory -f requirements.txt
+    $ conda env create -n hybridfactory -f environment.yml
     Solving environment: done
     Downloading and Extracting Packages
     ...
@@ -42,7 +42,7 @@ On Windows:
 
 .. code:: shell
 
-    $ conda env create -n hybridfactory
+    $ conda env create -n hybridfactory -f environment.yml
     Solving environment: done
     Downloading and Extracting Packages
     ...
@@ -143,7 +143,7 @@ Probe configuration
    the data to look for which channel (0-based).
 -  ``connected``: a 1-d array of ``n`` bools, with entry ``k`` being
    ``True`` if and only if channel ``k`` was used in the sorting.
--  ``channel_positions``: an :math:``n \times 2`` array of floats, with
+-  ``channel_positions``: an :math:`n \times 2` array of floats, with
    row ``k`` holding the x and y coordinates of channel
    ``channel_map[k]``.
 -  ``name`` (optional): a string giving the model name of your probe.
@@ -172,7 +172,7 @@ Optional parameters
 -  ``session_name``: String giving an identifying name to your hybrid
    run. Default is an MD5 hash computed from the current timestamp.
 -  ``random_seed``: Nonnegative integer in the range
-   :math:``[0, 2^{31})``. Because this algorithm is randomized, setting
+   :math:`[0, 2^{31})`. Because this algorithm is randomized, setting
    a random seed allows for reproducible output. The default is itself
    randomly generated, but will be output in a
    ``hfparams_[session_name].py`` on successful completion.
@@ -254,8 +254,8 @@ describing your probe. (See `Probe
 configuration <#probe-configuration>`__ for a description of these
 data.) - ``dtype-[session_name].npy``: a NumPy-formatted archive
 containing the sample rate of your dataset in the same format as your
-raw dataset. - ``firings_true.npy``. This is a :math:``3 \times K``
-array of ``uint64``, where :math:``K`` is the number of events
+raw dataset. - ``firings_true.npy``. This is a :math:`3 \times K`
+array of ``uint64``, where :math:`K` is the number of events
 generated. - Row 0 is the channel on which the event is centered,
 zero-based. - Row 1 is the timestamp of the event in sample units,
 zero-based. - Row 2 is the unit/cluster ID from the original data set

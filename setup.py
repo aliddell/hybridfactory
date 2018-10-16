@@ -2,7 +2,7 @@ import os.path as op
 
 import setuptools
 
-readme = op.join(op.abspath(op.dirname(__file__)), "README.md")
+readme = op.join(op.abspath(op.dirname(__file__)), "README.rst")
 with open(readme, "r") as fh:
     long_description = fh.read()
 
