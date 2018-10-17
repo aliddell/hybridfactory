@@ -19,6 +19,7 @@ cache:
     - venv/
 
 test-windows:
+  stage: test
   tags:
   - windows
   - spiegel-data
@@ -33,6 +34,7 @@ test-windows:
   coverage: '/TOTAL.+?(\d+)%/'
 
 test-nix:
+  stage: test
   tags:
   - nix
   - spiegel-data
@@ -50,6 +52,7 @@ test-nix:
   coverage: '/TOTAL.+?(\d+)%/'
 
 wheelify:
+  stage: deploy
   script:
   - python3 setup.py sdist bdist_wheel
   artifacts:

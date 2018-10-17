@@ -25,6 +25,10 @@ Hybrid Factory
 
 .. include:: cli.rst
 
+.. _output-files:
+
+.. include:: output-files.rst
+
 .. _parameter-file:
 
 .. include:: parameter-file.rst
