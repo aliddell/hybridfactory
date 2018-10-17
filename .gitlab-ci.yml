@@ -56,7 +56,8 @@ wheelify:
     paths:
     - dist/
 
-document:
+pages:
+  stage: deploy
   tags:
   - nix
   before_script:
@@ -67,9 +68,9 @@ document:
   script:
   - pip3 install tox
   - tox -e doc
-  - mv docs/build/html/ ../public/
+  - mv docs/build/html/ public/
   artifacts:
     paths:
-    - ../public/
+    - public/
   only:
   - master
