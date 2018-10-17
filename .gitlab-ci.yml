@@ -37,7 +37,7 @@ test-nix:
   - nix
   - spiegel-data
   before_script:
-  - 'export PATH=/opt/anaconda3/envs/py36:/opt/anaconda3/envs/py37:$PATH'
+  - 'export PATH=/opt/anaconda3/envs/py36/bin:/opt/anaconda3/envs/py37/bin:$PATH'
   - which python
   - python -V               # Print out python version for debugging
   - pip3 install virtualenv
