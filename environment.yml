@@ -2,7 +2,7 @@ name: hybridfactory
 dependencies:
   - python=3.6
   - numpy>=1.15
-  - matplotlib>=2.1
+  - matplotlib>=2.1,<3
   - scipy>=1.1
   - h5py>=2.8
   - pandas>=0.23
