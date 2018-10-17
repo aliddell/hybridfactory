@@ -1,7 +1,6 @@
 # This file is a template, and might need editing before it works on your project.
 # Official language image. Look for the different tagged releases at:
 # https://hub.docker.com/r/library/python/tags/
-image: python:3.6
 
 # Change pip's cache directory to be inside the project directory since we can
 # only cache local items.
@@ -23,11 +22,12 @@ test-windows:
   - windows
   - spiegel-data
   before_script:
+  - 'PATH=C:\Users\Alan\Anaconda3;%PATH%'
   - python -V               # Print out python version for debugging
   - '>>.env echo TESTBASE=F:/Tests/hybridfactory'
   script:
   - pip3 install tox
-  - tox -e py36
+  - tox -e py36,py37
   coverage: '/TOTAL.+?(\d+)%/'
 
 test-nix:
@@ -42,7 +42,7 @@ test-nix:
   - 'echo TESTBASE=/data/hybridfactory >.env'
   script:
   - pip3 install tox
-  - tox -e py36
+  - tox -e py36,py37
   coverage: '/TOTAL.+?(\d+)%/'
 
 wheelify:
@@ -66,6 +66,6 @@ document:
   - mv docs/build/html/ ../public/
   artifacts:
     paths:
-    - public
+    - ../public/
   only:
   - master
