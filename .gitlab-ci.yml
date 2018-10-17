@@ -1,6 +1,7 @@
 # This file is a template, and might need editing before it works on your project.
 # Official language image. Look for the different tagged releases at:
 # https://hub.docker.com/r/library/python/tags/
+image: python:3.6
 
 # Change pip's cache directory to be inside the project directory since we can
 # only cache local items.
@@ -22,7 +23,8 @@ test-windows:
   - windows
   - spiegel-data
   before_script:
-  - 'PATH=C:\Users\Alan\Anaconda3;%PATH%'
+  - 'PATH=C:\Users\Alan\Anaconda3\envs\py36;C:\Users\Alan\Anaconda3\envs\py37;%PATH%'
+  - where.exe python
   - python -V               # Print out python version for debugging
   - '>>.env echo TESTBASE=F:/Tests/hybridfactory'
   script:
@@ -32,10 +34,12 @@ test-windows:
 
 test-nix:
   tags:
-  - not-windows
+  - nix
   - spiegel-data
   before_script:
-  - python3 -V               # Print out python version for debugging
+  - 'export PATH=/opt/anaconda3/envs/py36:/opt/anaconda3/envs/py37:$PATH'
+  - which python
+  - python -V               # Print out python version for debugging
   - pip3 install virtualenv
   - virtualenv venv
   - source venv/bin/activate
